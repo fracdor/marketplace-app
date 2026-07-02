@@ -6,7 +6,7 @@
 
 **Architecture:** Local Supabase stack managed by the Supabase CLI. All authorization lives in Postgres RLS policies plus one `SECURITY DEFINER` function for the only multi-table atomic transition (`accept_offer`). Every table/policy/function is driven by a pgTAP test written first, run to confirm failure, then implemented.
 
-**Tech Stack:** Supabase CLI, PostgreSQL 15, pgTAP, Docker Desktop (required by `supabase start`).
+**Tech Stack:** Supabase CLI, PostgreSQL 17 (whatever version `supabase init` currently scaffolds), pgTAP, Docker Desktop (required by `supabase start`).
 
 **Reference spec:** [docs/superpowers/specs/2026-07-02-mvp-marketplace-design.md](../specs/2026-07-02-mvp-marketplace-design.md)
 
