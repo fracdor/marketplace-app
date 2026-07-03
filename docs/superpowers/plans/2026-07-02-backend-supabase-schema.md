@@ -397,7 +397,7 @@ git commit -m "feat: add categories table with RLS and seed data"
 ```sql
 -- supabase/tests/database/03-tasks.sql
 begin;
-select plan(10);
+select plan(12);
 
 select has_table('public', 'tasks', 'tasks table should exist');
 select col_is_pk('public', 'tasks', 'id', 'tasks.id should be the primary key');
@@ -461,6 +461,22 @@ select throws_ok(
   'a cancelled task should not be able to transition back to open'
 );
 
+select throws_ok(
+  $$ insert into public.tasks (client_id, category_id, title, description, city, status)
+     values ('44444444-4444-4444-4444-444444444444', 1, 'Tarea falsa', 'Insertada directamente en completed', 'Medellín', 'completed') $$,
+  'P0001',
+  NULL,
+  'a client should not be able to insert a task with a non-open status'
+);
+
+select throws_ok(
+  $$ insert into public.tasks (client_id, category_id, title, description, city, assigned_freelancer_id)
+     values ('44444444-4444-4444-4444-444444444444', 1, 'Tarea falsa 2', 'Insertada con assigned_freelancer_id directo', 'Medellín', '55555555-5555-5555-5555-555555555555') $$,
+  'P0001',
+  NULL,
+  'a client should not be able to insert a task with assigned_freelancer_id already set'
+);
+
 select * from finish();
 rollback;
 ```
@@ -514,6 +530,16 @@ returns trigger
 language plpgsql
 as $$
 begin
+  if tg_op = 'INSERT' then
+    if new.status <> 'open' then
+      raise exception 'a new task must start with status open';
+    end if;
+    if new.assigned_freelancer_id is not null then
+      raise exception 'a new task cannot have assigned_freelancer_id set';
+    end if;
+    return new;
+  end if;
+
   if new.assigned_freelancer_id is distinct from old.assigned_freelancer_id
      and coalesce(current_setting('app.allow_assignment', true), 'false') <> 'true' then
     raise exception 'tasks.assigned_freelancer_id cannot be set directly; use accept_offer()';
@@ -542,14 +568,14 @@ end;
 $$;
 
 create trigger tasks_enforce_status_transitions
-  before update on public.tasks
+  before insert or update on public.tasks
   for each row execute function public.enforce_task_status_transitions();
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx supabase test db`
-Expected: PASS — all 10 assertions in `03-tasks.sql` report `ok` (and Tasks 3-4's suites still pass).
+Expected: PASS — all 12 assertions in `03-tasks.sql` report `ok` (and Tasks 3-4's suites still pass).
 
 - [ ] **Step 5: Commit**
 
@@ -557,6 +583,8 @@ Expected: PASS — all 10 assertions in `03-tasks.sql` report `ok` (and Tasks 3-
 git add supabase/migrations/20260702000003_create_tasks.sql supabase/tests/database/03-tasks.sql
 git commit -m "feat: add tasks table with status-transition trigger and RLS"
 ```
+
+Notes from code review (found during the final holistic review across all 8 tasks, not caught by any single task's own tests): the trigger above was originally registered `before update` only, referencing `old.status`/`old.assigned_freelancer_id`, which don't exist on `INSERT`. Task 5's own tests only ever exercised UPDATE transitions on an already-`open` row, and Tasks 6-7's tests always inserted tasks via the default `status='open'` path, so nothing exercised an INSERT that tried to set a non-open status or a pre-set `assigned_freelancer_id` directly. That left a gap where `tasks_insert_own`'s RLS policy (`with check (client_id = auth.uid())`) said nothing about `status` or `assigned_freelancer_id`, so a client could INSERT a task already `completed`/`assigned` with an arbitrary `assigned_freelancer_id`, bypassing `offers` and `accept_offer()` entirely — the same bypass class already closed for UPDATE, just never extended to INSERT. Fixed by branching on `tg_op` inside the same trigger function and registering it `before insert or update`; the code block and test block above already reflect the fix and the two new assertions that lock it in.
 
 ---
 
@@ -940,7 +968,7 @@ Notes from code review (documented, not fixed — deferred, same treatment as Ta
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx supabase test db`
-Expected: PASS — all 13 assertions in `05-accept-offer.sql` report `ok`, and the full suite (all files 00-05, 46 assertions total: 3 + 10 + 5 + 10 + 5 + 13) passes with zero failures.
+Expected: PASS — all 13 assertions in `05-accept-offer.sql` report `ok`, and the full suite (all files 00-05, 48 assertions total: 3 + 10 + 5 + 12 + 5 + 13) passes with zero failures.
 
 - [ ] **Step 5: Commit**
 
