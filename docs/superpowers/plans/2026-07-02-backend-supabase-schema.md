@@ -668,6 +668,11 @@ create policy "offers_withdraw_own" on public.offers
   with check (status = 'withdrawn');
 ```
 
+Notes from code review (documented, not fixed — deferred, same treatment as Task 5's FK gap):
+- **Named helper vs. inline `exists`**: `offer_insert_is_valid()` is extracted into a named function because it's reused across a multi-clause `with check`, while `offers_select_related`'s `exists(...)` is inlined because it's short and single-use. This is an intentional convention, not an inconsistency — prefer a named helper when a policy has more than one condition to combine, inline `exists` otherwise.
+- **`unique (task_id, freelancer_id)` blocks re-offering after withdrawal.** A freelancer who withdraws an offer (`pending → withdrawn`) can never submit a second offer on that same task, even while it's still `open`. This is an accepted MVP limitation, not a bug — if it needs to change later, the fix is a partial unique index (`unique (task_id, freelancer_id) where (status <> 'withdrawn')`) rather than touching RLS.
+- **Deferred to Task 7**: add regression tests locking in the adversarial paths already verified live during review (freelancer self-accepting via direct UPDATE, cross-freelancer withdrawal, task owner accepting directly, duplicate `(task_id, freelancer_id)` insert) — Task 7 is the natural place since `accept_offer()` exercises the same `offers.status` state machine.
+
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx supabase test db`
