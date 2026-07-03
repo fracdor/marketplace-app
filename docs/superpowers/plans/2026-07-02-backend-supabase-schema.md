@@ -17,6 +17,7 @@
 - Docker Desktop must be running (Supabase CLI runs Postgres, GoTrue, PostgREST, etc. in containers).
 - Node.js must be installed (we invoke the Supabase CLI via `npx supabase`, no global install required).
 - All commands below assume the working directory is the project root (`D:\App mario y yo`).
+- **RLS is not enough on its own.** The version of Postgres/Supabase CLI used here does not auto-expose newly created tables to the `anon`/`authenticated` roles. Every table below pairs `alter table ... enable row level security;` with an explicit `grant <ops> on <table> to authenticated;` (only the operations that table actually needs — e.g. `categories` only grants `select`, since inserts/updates/deletes are intentionally blocked). Without the grant, every operation fails with `permission denied for table ...` (SQLSTATE `42501`) regardless of whether the RLS policy would have allowed it — Postgres checks table-level grants first, RLS policies second. This was discovered while implementing Task 3 (`profiles`) and applied consistently to every table from Task 4 onward.
 
 ---
 
@@ -224,6 +225,8 @@ create table public.profiles (
 
 alter table public.profiles enable row level security;
 
+grant select, insert, update on public.profiles to authenticated;
+
 create policy "profiles_select_own" on public.profiles
   for select using (auth.uid() = id);
 
@@ -325,6 +328,8 @@ create table public.categories (
 );
 
 alter table public.categories enable row level security;
+
+grant select on public.categories to authenticated;
 
 create policy "categories_select_all" on public.categories
   for select using (true);
@@ -441,6 +446,8 @@ create table public.tasks (
 );
 
 alter table public.tasks enable row level security;
+
+grant select, insert, update, delete on public.tasks to authenticated;
 
 create policy "tasks_select_visible" on public.tasks
   for select using (
@@ -575,6 +582,8 @@ create table public.offers (
 );
 
 alter table public.offers enable row level security;
+
+grant select, insert, update on public.offers to authenticated;
 
 create policy "offers_select_related" on public.offers
   for select using (
