@@ -18,6 +18,7 @@
 - Node.js must be installed (we invoke the Supabase CLI via `npx supabase`, no global install required).
 - All commands below assume the working directory is the project root (`D:\App mario y yo`).
 - **RLS is not enough on its own.** The version of Postgres/Supabase CLI used here does not auto-expose newly created tables to the `anon`/`authenticated` roles. Every table below pairs `alter table ... enable row level security;` with an explicit `grant <ops> on <table> to authenticated;` (only the operations that table actually needs — e.g. `categories` only grants `select`, since inserts/updates/deletes are intentionally blocked). Without the grant, every operation fails with `permission denied for table ...` (SQLSTATE `42501`) regardless of whether the RLS policy would have allowed it — Postgres checks table-level grants first, RLS policies second. This was discovered while implementing Task 3 (`profiles`) and applied consistently to every table from Task 4 onward.
+- **`throws_ok`'s 3-argument form doesn't mean what it looks like it means.** Every `throws_ok(sql, errcode, description)` call below actually needs a 4th argument: `throws_ok(sql, errcode, NULL, description)`. pgTAP's 3-arg overload treats the 3rd string as an *expected error message* to match verbatim, not a free-text description — so passing a description there causes a false failure (SQLSTATE matches, but the description text never matches the real error message). Use `NULL` as the 3rd argument whenever you only want to assert on SQLSTATE, or pass the real expected message text when you do want to assert on it exactly (as several assertions below do, e.g. the `accept_offer()` error messages).
 
 ---
 
@@ -329,6 +330,7 @@ select lives_ok(
 select throws_ok(
   $$ insert into public.categories (name, slug) values ('Hack', 'hack') $$,
   '42501',
+  NULL,
   'authenticated users should not be able to insert categories'
 );
 
@@ -415,6 +417,7 @@ select throws_ok(
   $$ insert into public.tasks (client_id, category_id, title, description, city)
      values ('55555555-5555-5555-5555-555555555555', 1, 'Tarea ajena', 'desc', 'Medellín') $$,
   '42501',
+  NULL,
   'a user should not be able to create a task on behalf of someone else'
 );
 
@@ -574,6 +577,7 @@ select throws_ok(
   $$ insert into public.offers (task_id, freelancer_id, price, message)
      values ('a3333333-3333-3333-3333-333333333333', 'a1111111-1111-1111-1111-111111111111', 10000, 'yo mismo') $$,
   '42501',
+  NULL,
   'a client should not be able to offer on their own task'
 );
 
