@@ -698,7 +698,7 @@ git commit -m "feat: add offers table with RLS"
 ```sql
 -- supabase/tests/database/05-accept-offer.sql
 begin;
-select plan(8);
+select plan(12);
 
 select tests.create_user('b1111111-1111-1111-1111-111111111111'::uuid); -- client
 select tests.create_user('b2222222-2222-2222-2222-222222222222'::uuid); -- freelancer A
@@ -725,7 +725,62 @@ select lives_ok(
   'freelancer B should also be able to offer on the same open task'
 );
 
+-- adversarial checks (deferred from Task 6 review): freelancer cannot
+-- self-accept, cannot withdraw someone else's offer, task owner cannot
+-- accept directly, and a freelancer cannot submit a second offer on the
+-- same task. Both offers must remain 'pending' after this block so the
+-- rest of the test (accept_offer flow below) proceeds as designed.
+
+select tests.authenticate_as('b2222222-2222-2222-2222-222222222222'::uuid);
+
+select throws_ok(
+  $$ update public.offers set status = 'accepted'
+     where task_id = 'b4444444-4444-4444-4444-444444444444'
+       and freelancer_id = 'b2222222-2222-2222-2222-222222222222' $$,
+  '42501',
+  NULL,
+  'a freelancer should not be able to accept their own offer directly'
+);
+
+select throws_ok(
+  $$ insert into public.offers (task_id, freelancer_id, price, message)
+     values ('b4444444-4444-4444-4444-444444444444', 'b2222222-2222-2222-2222-222222222222', 55000, 'segunda oferta') $$,
+  '23505',
+  NULL,
+  'a freelancer should not be able to submit a second offer on the same task'
+);
+
+update public.offers set status = 'withdrawn'
+  where task_id = 'b4444444-4444-4444-4444-444444444444'
+    and freelancer_id = 'b3333333-3333-3333-3333-333333333333';
+
+-- switch to the client to check the result: freelancer A (still
+-- authenticated above) has no RLS visibility into freelancer B's offer
+-- row at all, so checking as A would see zero rows instead of 'pending'
+-- regardless of whether the withdrawal was blocked. The client can see
+-- all offers on their own task, so this is the right vantage point to
+-- confirm the row was left untouched.
 select tests.authenticate_as('b1111111-1111-1111-1111-111111111111'::uuid);
+
+select results_eq(
+  $$ select status from public.offers
+     where task_id = 'b4444444-4444-4444-4444-444444444444' and freelancer_id = 'b3333333-3333-3333-3333-333333333333' $$,
+  $$ values ('pending'::text) $$,
+  'a freelancer should not be able to withdraw someone elses offer'
+);
+
+select tests.authenticate_as('b1111111-1111-1111-1111-111111111111'::uuid);
+
+update public.offers set status = 'accepted'
+  where task_id = 'b4444444-4444-4444-4444-444444444444'
+    and freelancer_id = 'b3333333-3333-3333-3333-333333333333';
+
+select results_eq(
+  $$ select status from public.offers
+     where task_id = 'b4444444-4444-4444-4444-444444444444' and freelancer_id = 'b3333333-3333-3333-3333-333333333333' $$,
+  $$ values ('pending'::text) $$,
+  'the task owner should not be able to accept an offer via a direct update'
+);
 
 select lives_ok(
   $$ select public.accept_offer(id) from public.offers
@@ -765,10 +820,17 @@ select throws_ok(
 
 select tests.authenticate_as('b2222222-2222-2222-2222-222222222222'::uuid);
 
+-- freelancer A can only resolve an offer id they have RLS visibility into
+-- (their own, now-rejected, offer) -- RLS already hides freelancer B's
+-- offer row from A entirely, so using B's offer id here would make the
+-- subquery return zero rows and never call accept_offer() at all. Using
+-- A's own offer id still fully exercises the "only the task owner can
+-- accept" check inside accept_offer(), since that check runs regardless
+-- of which offer id a non-owner supplies.
 select throws_ok(
   $$ select public.accept_offer(id) from public.offers
      where task_id = 'b4444444-4444-4444-4444-444444444444'
-       and freelancer_id = 'b3333333-3333-3333-3333-333333333333' $$,
+       and freelancer_id = 'b2222222-2222-2222-2222-222222222222' $$,
   'P0001',
   'only the task owner can accept an offer',
   'a non-owner should not be able to accept an offer on someone elses task'
@@ -778,10 +840,23 @@ select * from finish();
 rollback;
 ```
 
+Two of the four adversarial assertions needed a vantage-point fix versus the
+first draft, both caused by the same underlying (correct) RLS behavior in
+`offers_select_related`: a freelancer has zero read visibility into another
+freelancer's offer row. (1) After freelancer A attempts to withdraw freelancer
+B's offer, the `results_eq` check re-reading that row must run as the client
+(who can see all offers on their task), not as freelancer A — otherwise the
+row is invisible and the query returns no rows instead of `pending`. (2) The
+final "non-owner cannot accept" check must call `accept_offer()` with an
+offer id freelancer A can actually resolve via RLS (their own offer), not
+freelancer B's — otherwise the subquery returns zero rows and `accept_offer()`
+is never invoked at all, so no exception is raised. Both fixes preserve the
+exact behavior being tested; neither weakens an assertion.
+
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `npx supabase test db`
-Expected: FAIL — `select public.accept_offer(...)` errors with "function public.accept_offer(uuid) does not exist".
+Expected: FAIL — `select public.accept_offer(...)` errors with "function public.accept_offer(uuid) does not exist" (and the earlier adversarial assertions against `offers`/`tasks` should already pass fine, since those tables/policies already exist from Tasks 5-6 — only the `accept_offer` calls should fail at this stage).
 
 - [ ] **Step 3: Write the migration**
 
@@ -854,7 +929,7 @@ grant execute on function public.accept_offer(uuid) to authenticated;
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx supabase test db`
-Expected: PASS — all 8 assertions in `05-accept-offer.sql` report `ok`, and the full suite (all files 00-05, 41 assertions total: 3 + 10 + 5 + 10 + 5 + 8) passes with zero failures.
+Expected: PASS — all 12 assertions in `05-accept-offer.sql` report `ok`, and the full suite (all files 00-05, 45 assertions total: 3 + 10 + 5 + 10 + 5 + 12) passes with zero failures.
 
 - [ ] **Step 5: Commit**
 
