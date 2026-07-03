@@ -122,6 +122,14 @@ begin
 end;
 $$;
 
+-- once authenticate_as() switches the session role to 'authenticated' (or
+-- 'anon'), those roles need their own privilege to call the tests.* helpers
+-- again later in the same test file (e.g. to switch to a different user).
+grant usage on schema tests to authenticated, anon;
+grant execute on function tests.create_user(uuid, text) to authenticated, anon;
+grant execute on function tests.authenticate_as(uuid) to authenticated, anon;
+grant execute on function tests.clear_authentication() to authenticated, anon;
+
 begin;
 select plan(3);
 
@@ -160,7 +168,7 @@ git commit -m "test: add pgTAP helpers to simulate authenticated users"
 ```sql
 -- supabase/tests/database/01-profiles.sql
 begin;
-select plan(8);
+select plan(10);
 
 select has_table('public', 'profiles', 'profiles table should exist');
 select has_column('public', 'profiles', 'phone', 'profiles should have a phone column');
@@ -199,9 +207,26 @@ select results_eq(
   'a direct select on profiles should only return the authenticated users own row'
 );
 
+select tests.authenticate_as('22222222-2222-2222-2222-222222222222'::uuid);
+
+select results_eq(
+  $$ select full_name from public.profiles_public where id = '11111111-1111-1111-1111-111111111111'::uuid $$,
+  $$ values ('Ana'::text) $$,
+  'profiles_public should expose another users full_name'
+);
+
+select throws_ok(
+  $$ select phone from public.profiles_public $$,
+  '42703',
+  NULL,
+  'phone should not be a reachable column on profiles_public'
+);
+
 select * from finish();
 rollback;
 ```
+
+Note: `throws_ok`'s 3-argument overload `(sql, errcode, description)` doesn't exist as such — pgTAP's 3-arg form treats the 3rd argument as an expected error *message*, not a description, when the 2nd argument looks like a 5-character SQLSTATE. To assert on SQLSTATE only (ignoring the exact message) with an explicit description, use the 4-arg form with `NULL` as the message, as shown above.
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -261,7 +286,7 @@ create trigger on_auth_user_created
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx supabase test db`
-Expected: PASS — all 8 assertions in `01-profiles.sql` report `ok`.
+Expected: PASS — all 10 assertions in `01-profiles.sql` report `ok`.
 
 - [ ] **Step 5: Commit**
 
@@ -799,7 +824,7 @@ grant execute on function public.accept_offer(uuid) to authenticated;
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx supabase test db`
-Expected: PASS — all 8 assertions in `05-accept-offer.sql` report `ok`, and the full suite (all files 00-05, 37 assertions total) passes with zero failures.
+Expected: PASS — all 8 assertions in `05-accept-offer.sql` report `ok`, and the full suite (all files 00-05, 39 assertions total: 3 + 10 + 5 + 8 + 5 + 8) passes with zero failures.
 
 - [ ] **Step 5: Commit**
 
