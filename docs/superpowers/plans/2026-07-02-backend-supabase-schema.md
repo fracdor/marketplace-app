@@ -634,7 +634,7 @@ git commit -m "feat: add offers table with RLS"
 ```sql
 -- supabase/tests/database/05-accept-offer.sql
 begin;
-select plan(8);
+select plan(13);
 
 select tests.create_user('b1111111-1111-1111-1111-111111111111'::uuid); -- client
 select tests.create_user('b2222222-2222-2222-2222-222222222222'::uuid); -- freelancer A
@@ -708,6 +708,13 @@ select throws_ok(
   'P0001',
   'only the task owner can accept an offer',
   'a non-owner should not be able to accept an offer on someone elses task'
+);
+
+select throws_ok(
+  $$ select public.accept_offer('00000000-0000-0000-0000-000000000000'::uuid) $$,
+  'P0001',
+  'offer not found',
+  'accept_offer should raise a clear error when the offer id does not exist'
 );
 
 select * from finish();
@@ -787,10 +794,14 @@ $$;
 grant execute on function public.accept_offer(uuid) to authenticated;
 ```
 
+Notes from code review (documented, not fixed — deferred, same treatment as Tasks 5-6):
+- **All failure modes raise generic `P0001` with no distinct error code.** `accept_offer()`'s four `raise exception` branches (offer not found, task not found, not the owner, task not open) are only distinguishable by exact message-text matching. Fine for this backend-only plan; worth revisiting (custom SQLSTATEs or a small internal error-code convention) once an API/edge-function layer is built on top of this schema and needs to branch on error type programmatically.
+- **`task is not open for accepting offers` doesn't say which status it hit.** A client retry after the task moved to `assigned` gets the same message as a `cancelled` task. Cheap to improve later (`raise exception 'task is not open for accepting offers (current status: %)', v_task_status`) but not needed for this backend-only plan.
+
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx supabase test db`
-Expected: PASS — all 8 assertions in `05-accept-offer.sql` report `ok`, and the full suite (all files 00-05, 37 assertions total) passes with zero failures.
+Expected: PASS — all 13 assertions in `05-accept-offer.sql` report `ok`, and the full suite (all files 00-05, 46 assertions total: 3 + 10 + 5 + 10 + 5 + 13) passes with zero failures.
 
 - [ ] **Step 5: Commit**
 
