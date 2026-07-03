@@ -1,6 +1,6 @@
 -- supabase/tests/database/01-profiles.sql
 begin;
-select plan(8);
+select plan(10);
 
 select has_table('public', 'profiles', 'profiles table should exist');
 select has_column('public', 'profiles', 'phone', 'profiles should have a phone column');
@@ -37,6 +37,21 @@ select results_eq(
   $$ select id from public.profiles order by id $$,
   $$ values ('11111111-1111-1111-1111-111111111111'::uuid) $$,
   'a direct select on profiles should only return the authenticated users own row'
+);
+
+select tests.authenticate_as('22222222-2222-2222-2222-222222222222'::uuid);
+
+select results_eq(
+  $$ select full_name from public.profiles_public where id = '11111111-1111-1111-1111-111111111111'::uuid $$,
+  $$ values ('Ana'::text) $$,
+  'profiles_public should expose another users full_name'
+);
+
+select throws_ok(
+  $$ select phone from public.profiles_public $$,
+  '42703',
+  NULL,
+  'phone should not be a reachable column on profiles_public'
 );
 
 select * from finish();

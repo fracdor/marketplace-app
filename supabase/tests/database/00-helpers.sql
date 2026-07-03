@@ -46,6 +46,14 @@ begin
 end;
 $$;
 
+-- once authenticate_as() switches the session role to 'authenticated' (or
+-- 'anon'), those roles need their own privilege to call the tests.* helpers
+-- again later in the same test file (e.g. to switch to a different user).
+grant usage on schema tests to authenticated, anon;
+grant execute on function tests.create_user(uuid, text) to authenticated, anon;
+grant execute on function tests.authenticate_as(uuid) to authenticated, anon;
+grant execute on function tests.clear_authentication() to authenticated, anon;
+
 begin;
 select plan(3);
 
