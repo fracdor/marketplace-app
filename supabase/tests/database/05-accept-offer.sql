@@ -1,6 +1,6 @@
 -- supabase/tests/database/05-accept-offer.sql
 begin;
-select plan(12);
+select plan(13);
 
 select tests.create_user('b1111111-1111-1111-1111-111111111111'::uuid); -- client
 select tests.create_user('b2222222-2222-2222-2222-222222222222'::uuid); -- freelancer A
@@ -136,6 +136,13 @@ select throws_ok(
   'P0001',
   'only the task owner can accept an offer',
   'a non-owner should not be able to accept an offer on someone elses task'
+);
+
+select throws_ok(
+  $$ select public.accept_offer('00000000-0000-0000-0000-000000000000'::uuid) $$,
+  'P0001',
+  'offer not found',
+  'accept_offer should raise a clear error when the offer id does not exist'
 );
 
 select * from finish();
