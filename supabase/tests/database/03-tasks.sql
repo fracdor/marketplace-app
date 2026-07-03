@@ -1,6 +1,6 @@
 -- supabase/tests/database/03-tasks.sql
 begin;
-select plan(10);
+select plan(12);
 
 select has_table('public', 'tasks', 'tasks table should exist');
 select col_is_pk('public', 'tasks', 'id', 'tasks.id should be the primary key');
@@ -62,6 +62,22 @@ select throws_ok(
   'P0001',
   'invalid task status transition from cancelled to open',
   'a cancelled task should not be able to transition back to open'
+);
+
+select throws_ok(
+  $$ insert into public.tasks (client_id, category_id, title, description, city, status)
+     values ('44444444-4444-4444-4444-444444444444', 1, 'Tarea falsa', 'Insertada directamente en completed', 'Medellín', 'completed') $$,
+  'P0001',
+  NULL,
+  'a client should not be able to insert a task with a non-open status'
+);
+
+select throws_ok(
+  $$ insert into public.tasks (client_id, category_id, title, description, city, assigned_freelancer_id)
+     values ('44444444-4444-4444-4444-444444444444', 1, 'Tarea falsa 2', 'Insertada con assigned_freelancer_id directo', 'Medellín', '55555555-5555-5555-5555-555555555555') $$,
+  'P0001',
+  NULL,
+  'a client should not be able to insert a task with assigned_freelancer_id already set'
 );
 
 select * from finish();

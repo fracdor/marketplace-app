@@ -39,6 +39,16 @@ returns trigger
 language plpgsql
 as $$
 begin
+  if tg_op = 'INSERT' then
+    if new.status <> 'open' then
+      raise exception 'a new task must start with status open';
+    end if;
+    if new.assigned_freelancer_id is not null then
+      raise exception 'a new task cannot have assigned_freelancer_id set';
+    end if;
+    return new;
+  end if;
+
   if new.assigned_freelancer_id is distinct from old.assigned_freelancer_id
      and coalesce(current_setting('app.allow_assignment', true), 'false') <> 'true' then
     raise exception 'tasks.assigned_freelancer_id cannot be set directly; use accept_offer()';
@@ -67,5 +77,5 @@ end;
 $$;
 
 create trigger tasks_enforce_status_transitions
-  before update on public.tasks
+  before insert or update on public.tasks
   for each row execute function public.enforce_task_status_transitions();
