@@ -39,6 +39,11 @@ returns trigger
 language plpgsql
 as $$
 begin
+  if new.assigned_freelancer_id is distinct from old.assigned_freelancer_id
+     and coalesce(current_setting('app.allow_assignment', true), 'false') <> 'true' then
+    raise exception 'tasks.assigned_freelancer_id cannot be set directly; use accept_offer()';
+  end if;
+
   if new.status = old.status then
     new.updated_at := now();
     return new;
