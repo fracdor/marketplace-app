@@ -78,6 +78,8 @@ El gate vive en `app/_layout.tsx` y re-evalúa en cada cambio de sesión (`onAut
 
 El fondo de gradiente animado aplica a `(auth)` + onboarding; `(tabs)` usa fondo neutro. Logout regresa al inicio del gate. Las pantallas de `(tabs)` (feed, mis-tareas, publicar, perfil) son **placeholders** en este sub-proyecto.
 
+**Nota sobre confirmación de email:** si el proyecto Supabase tiene "Confirm email" activado, `signUp` no crea sesión activa hasta que el usuario confirma; el gate muestra entonces un estado intermedio "revisa tu correo" en `(auth)`. En Supabase local (dev) el email se auto-confirma (o se lee vía Inbucket), así que la sesión existe de inmediato. El plan debe manejar ambos casos.
+
 ## Testing
 
 Misma disciplina que el backend: lógica primero, TDD donde aporta. **Jest + React Native Testing Library**, con el cliente Supabase **mockeado** (la suite corre sin Docker).
