@@ -26,10 +26,14 @@ export function GradientBackground({ children, durationMs = 6000, ...props }: Gr
   }, [durationMs]);
 
   const current = PALETTES[index];
+  // Base layer shows the PREVIOUS palette so that when the top MotiView remounts
+  // (via key) at opacity 0, the frame exposed underneath matches what was just
+  // visible — avoiding a hard "snap back to palette 0" on every cycle.
+  const previous = PALETTES[(index - 1 + PALETTES.length) % PALETTES.length];
 
   return (
     <View style={styles.fill} {...props}>
-      <LinearGradient colors={PALETTES[0]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={previous} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
       <MotiView
         key={index}
         from={{ opacity: 0 }}

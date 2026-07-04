@@ -6,7 +6,7 @@ interface InputProps extends TextInputProps {
   error?: string;
 }
 
-export function Input({ label, error, ...props }: InputProps) {
+export function Input({ label, error, className, ...props }: InputProps) {
   return (
     <View className="mb-3">
       <Text className="text-xs text-slate-600 mb-1">{label}</Text>
@@ -14,6 +14,7 @@ export function Input({ label, error, ...props }: InputProps) {
         className={cn(
           'h-11 rounded-xl border px-3 bg-white',
           error ? 'border-red-400' : 'border-slate-200',
+          className, // merge caller overrides via cn instead of letting them clobber
         )}
         placeholderTextColor="#94a3b8"
         {...props}
