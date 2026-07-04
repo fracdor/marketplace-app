@@ -16,7 +16,11 @@ export default function OnboardingScreen() {
           if (!session) return;
           await saveProfile(session.user.id, input);
           await refreshProfile();
-          router.replace('/(tabs)');
+          // Route through the gate (not straight to /(tabs)) so it re-decides
+          // from the freshly-fetched profile — if refreshProfile silently failed
+          // (fetchProfile returns null on error), the gate keeps the user in
+          // onboarding instead of stranding them in tabs with a null profile.
+          router.replace('/');
         }} />
       </Card>
     </View>
