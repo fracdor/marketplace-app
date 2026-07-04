@@ -31,6 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
     const { data: sub } = supabase.auth.onAuthStateChange(async (_event, s) => {
+      if (!active) return;
       setSession(s);
       await loadProfile(s);
     });
