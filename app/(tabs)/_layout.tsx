@@ -1,6 +1,11 @@
-import { Tabs } from 'expo-router';
+import { Redirect, Tabs } from 'expo-router';
+import { useAuth } from '@/features/auth/useAuth';
 
 export default function TabsLayout() {
+  const { loading, session } = useAuth();
+  // Guard: (tabs) is only reachable with a session. Covers sign-out (the gate
+  // in app/index.tsx is unmounted by then) and deep links that skip the gate.
+  if (!loading && !session) return <Redirect href="/(auth)/login" />;
   return (
     <Tabs screenOptions={{ headerShown: true }}>
       <Tabs.Screen name="index" options={{ title: 'Feed' }} />
