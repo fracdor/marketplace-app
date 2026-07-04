@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -24,6 +24,7 @@ export default function VerifyPhoneScreen() {
           <PhoneForm onSubmit={async (p) => { await sendPhoneCode(p); setPhone(p); }} />
         ) : (
           <View>
+            {/* TODO(otp-provider): remove the dev code from this label once OtpService is SMS-backed */}
             <Input label="Código (dev: 123456)" testID="code-input" keyboardType="number-pad"
               value={code} onChangeText={setCode} error={error ?? undefined} />
             <Button label="Verificar" loading={loading} onPress={async () => {
@@ -39,6 +40,9 @@ export default function VerifyPhoneScreen() {
                 setLoading(false);
               }
             }} />
+            <Pressable onPress={() => { setPhone(null); setCode(''); setError(null); }}>
+              <Text className="text-brand text-center mt-4 font-semibold">Cambiar número</Text>
+            </Pressable>
           </View>
         )}
       </Card>

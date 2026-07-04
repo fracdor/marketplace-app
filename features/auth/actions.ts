@@ -7,9 +7,14 @@ export async function signIn(email: string, password: string) {
   if (error) throw error;
 }
 
-export async function signUp(email: string, password: string) {
-  const { error } = await supabase.auth.signUp({ email, password });
+export async function signUp(email: string, password: string): Promise<{ needsEmailConfirmation: boolean }> {
+  const { data, error } = await supabase.auth.signUp({ email, password });
   if (error) throw error;
+  // With "Confirm email" enabled, signUp returns no session until the user
+  // confirms via the emailed link; Supabase local (dev) auto-confirms, so a
+  // session exists immediately there. Callers use this to show a
+  // "check your email" state instead of bouncing silently through the gate.
+  return { needsEmailConfirmation: !data.session };
 }
 
 export async function signOut() {
