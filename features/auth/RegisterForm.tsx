@@ -3,6 +3,7 @@ import { View, Text } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { registerSchema, type RegisterInput } from '@/features/auth/schemas';
+import { mapAuthError } from '@/features/auth/errors';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 
@@ -22,7 +23,7 @@ export function RegisterForm({ onSubmit }: RegisterFormProps) {
     try {
       await onSubmit(values.email, values.password);
     } catch (e) {
-      setSubmitError(e instanceof Error ? e.message : 'Error al crear la cuenta');
+      setSubmitError(e instanceof Error ? mapAuthError(e.message) : 'Error al crear la cuenta');
     }
   });
 

@@ -3,6 +3,7 @@ import { View, Text } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { profileSchema, type ProfileInput } from '@/features/auth/schemas';
+import { mapAuthError } from '@/features/auth/errors';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 
@@ -21,7 +22,7 @@ export function ProfileForm({ onSubmit }: ProfileFormProps) {
     try {
       await onSubmit(values);
     } catch (e) {
-      setSubmitError(e instanceof Error ? e.message : 'Error');
+      setSubmitError(e instanceof Error ? mapAuthError(e.message) : 'Error');
     }
   });
   return (
