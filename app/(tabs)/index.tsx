@@ -1,4 +1,4 @@
-import { ActivityIndicator, FlatList, RefreshControl, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { TaskCard } from '@/components/tasks/TaskCard';
 import { useOpenTasks } from '@/features/tasks/hooks';
@@ -19,9 +19,10 @@ export default function Feed() {
   if (isError) {
     return (
       <View className="flex-1 items-center justify-center bg-white px-6">
-        <Text className="text-slate-500 text-center">
-          No pudimos cargar las tareas. Desliza hacia abajo para reintentar.
-        </Text>
+        <Text className="text-slate-500 text-center mb-4">No pudimos cargar las tareas.</Text>
+        <Pressable onPress={() => refetch()} className="bg-brand px-4 py-2 rounded-xl">
+          <Text className="text-white font-bold">Reintentar</Text>
+        </Pressable>
       </View>
     );
   }
