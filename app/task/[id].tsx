@@ -1,11 +1,11 @@
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useTask } from '@/features/tasks/hooks';
 import { formatBudget, formatRelativeTime } from '@/features/tasks/format';
 
 export default function TaskDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data: task, isPending, isError } = useTask(id);
+  const { data: task, isPending, isError, refetch } = useTask(id);
 
   return (
     <View className="flex-1 bg-white">
@@ -23,7 +23,10 @@ export default function TaskDetailScreen() {
         </View>
       ) : isError || !task ? (
         <View className="flex-1 items-center justify-center px-6">
-          <Text className="text-slate-500 text-center">No pudimos cargar esta tarea.</Text>
+          <Text className="text-slate-500 text-center mb-4">No pudimos cargar esta tarea.</Text>
+          <Pressable onPress={() => refetch()} className="bg-brand px-4 py-2 rounded-xl">
+            <Text className="text-white font-bold">Reintentar</Text>
+          </Pressable>
         </View>
       ) : (
         <>
