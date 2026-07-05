@@ -34,4 +34,35 @@ describe('TaskCard', () => {
     fireEvent.press(screen.getByTestId('task-card'));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
+
+  it('shows "Anónimo" when the client has no name', async () => {
+    await render(
+      <TaskCard task={{ ...task, client: { ...task.client, full_name: null } }} onPress={() => {}} />,
+    );
+    expect(screen.getByText('Anónimo')).toBeTruthy();
+  });
+
+  it('shows "Anónimo" when the client name is an empty string', async () => {
+    await render(
+      <TaskCard task={{ ...task, client: { ...task.client, full_name: '' } }} onPress={() => {}} />,
+    );
+    expect(screen.getByText('Anónimo')).toBeTruthy();
+  });
+
+  it('shows "Anónimo" when the client name is whitespace-only', async () => {
+    await render(
+      <TaskCard task={{ ...task, client: { ...task.client, full_name: '   ' } }} onPress={() => {}} />,
+    );
+    expect(screen.getByText('Anónimo')).toBeTruthy();
+  });
+
+  it('abbreviates a 3+ word name to first name + second word initial', async () => {
+    await render(
+      <TaskCard
+        task={{ ...task, client: { ...task.client, full_name: 'Ana María Ruiz Gómez' } }}
+        onPress={() => {}}
+      />,
+    );
+    expect(screen.getByText('Ana M.')).toBeTruthy();
+  });
 });

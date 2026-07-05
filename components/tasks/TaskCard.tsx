@@ -8,8 +8,9 @@ interface TaskCardProps {
 }
 
 function firstNameAndInitial(fullName: string | null): string {
-  if (!fullName) return 'Anónimo';
-  const parts = fullName.trim().split(/\s+/);
+  const trimmed = fullName?.trim();
+  if (!trimmed) return 'Anónimo'; // covers null, '', and whitespace-only names
+  const parts = trimmed.split(/\s+/);
   if (parts.length === 1) return parts[0];
   return `${parts[0]} ${parts[1][0]}.`;
 }
