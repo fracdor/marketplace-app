@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react-native';
+import { render, screen, fireEvent } from '@testing-library/react-native';
 import TaskDetailScreen from '@/app/task/[id]';
 
 jest.mock('expo-router', () => ({
@@ -45,5 +45,14 @@ describe('TaskDetailScreen', () => {
     (useTask as jest.Mock).mockReturnValue({ data: undefined, isPending: true, isError: false });
     await render(<TaskDetailScreen />);
     expect(screen.queryByText('Arreglar fuga en la cocina')).toBeNull();
+  });
+
+  it('shows a retry button on error, and pressing it calls refetch', async () => {
+    const refetch = jest.fn();
+    (useTask as jest.Mock).mockReturnValue({ data: undefined, isPending: false, isError: true, refetch });
+    await render(<TaskDetailScreen />);
+    expect(screen.getByText('No pudimos cargar esta tarea.')).toBeTruthy();
+    fireEvent.press(screen.getByText('Reintentar'));
+    expect(refetch).toHaveBeenCalledTimes(1);
   });
 });
