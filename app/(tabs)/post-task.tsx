@@ -10,7 +10,7 @@ export default function PostTask() {
 
   const onSubmit = async (input: CreateTaskInput) => {
     await mutateAsync(input);
-    router.push('/(tabs)');
+    router.replace('/(tabs)');
   };
 
   return (
