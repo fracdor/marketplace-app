@@ -14,7 +14,7 @@
 
 ## Before you start
 
-- Working directory is the repo root (`D:\App mario y yo`). The app currently has 109 passing tests (`npm test`) and `npx tsc --noEmit` clean on `main`.
+- Working directory is the repo root (`D:\App mario y yo`). The app currently has 65 passing tests (`npm test`) and `npx tsc --noEmit` clean on `main`. (Corrected 2026-07-04: an earlier draft of this plan/memory said 109, which was wrong — verified live via a jest run scoped away from nested worktree directories. If a worktree exists under `.worktrees/` or `.claude/worktrees/` when you run `npm test` from the repo root, jest will double-count files from it — always verify counts from inside your own isolated worktree, not the repo root.)
 - **Docker/Supabase local is still down.** Nothing in this plan needs it: all new tests mock `@/features/tasks/api` or `@/features/tasks/hooks` or `@/features/auth/useAuth`, never a live database. `createTask`/`fetchCategories` in `api.ts` are **not** unit-tested directly — same precedent as `fetchOpenTasks`/`fetchTaskById` — correctness rests on reading the actual RLS policy and should be manually verified against a live `npx supabase start` stack once Docker is fixed.
 - **`jest` must stay on `^29`** (see the note in `jest.config.js`). No task here installs new npm packages — `react-hook-form`, `@hookform/resolvers`, `zod`, and `@tanstack/react-query` are all already installed.
 - **`@testing-library/react-native` v14's `render` is async.** Every new test below `await render(...)` — established pattern (see `features/auth/__tests__/LoginForm.test.tsx`).
@@ -308,7 +308,7 @@ Run: `npx tsc --noEmit`
 Expected: no errors. (No dedicated unit test for `fetchCategories`/`createTask` — same precedent as `fetchOpenTasks`/`fetchTaskById`, verified via `tsc` plus the RLS reasoning in "Before you start." `useCreateTask`/`useCategories` in Task 3 mock this whole module, exercising the hook-level contract.)
 
 Run: `npm test`
-Expected: all 109 pre-existing tests plus Task 1's 8 new tests still pass (117 total).
+Expected: all 65 pre-existing tests plus Task 1's 8 new tests still pass (73 total).
 
 - [ ] **Step 4: Commit**
 
@@ -531,7 +531,7 @@ Run: `npx tsc --noEmit`
 Expected: no errors.
 
 Run: `npm test`
-Expected: all tests pass (117 prior + 3 net-new from this task's replaced file = 120 total; the file went from 2 to 5 assertions, a net +3).
+Expected: all tests pass (73 prior + 3 net-new from this task's replaced file = 76 total; the file went from 2 to 5 assertions, a net +3).
 
 - [ ] **Step 6: Commit**
 
@@ -809,7 +809,7 @@ Run: `npx tsc --noEmit`
 Expected: no errors.
 
 Run: `npm test`
-Expected: all tests pass (120 prior + 2 new = 122 total).
+Expected: all tests pass (76 prior + 2 new = 78 total).
 
 - [ ] **Step 6: Commit**
 
@@ -876,7 +876,7 @@ Run: `npx tsc --noEmit`
 Expected: no errors. (No dedicated screen test — same precedent as `app/(auth)/login.tsx` and `app/(tabs)/index.tsx`: this screen is thin glue over already-tested `PostTaskForm`/`useCreateTask`, verified by typecheck plus the full suite staying green.)
 
 Run: `npm test`
-Expected: all 122 pre-existing tests still pass (no new tests in this task).
+Expected: all 78 pre-existing tests still pass (no new tests in this task).
 
 - [ ] **Step 3: Commit**
 
@@ -894,7 +894,7 @@ git commit -m "feat: wire the post-task screen to useCreateTask"
 - [ ] **Step 1: Run the full test suite**
 
 Run: `npm test`
-Expected: all suites pass — 122 assertions total (109 pre-existing + 8 from Task 1 + 3 net-new from Task 3 + 2 from Task 4). Zero failures.
+Expected: all suites pass — 78 assertions total (65 pre-existing + 8 from Task 1 + 3 net-new from Task 3 + 2 from Task 4). Zero failures.
 
 - [ ] **Step 2: Typecheck the whole project**
 
