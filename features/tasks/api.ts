@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import type { Task, TaskWithRelations } from '@/features/tasks/types';
+import type { CategoryRow, CreateTaskInput, Task, TaskWithRelations } from '@/features/tasks/types';
 
 // tasks.category_id -> categories.id is a real FK, and `categories` has no
 // per-row RLS restriction (categories_select_all allows every authenticated
@@ -62,4 +62,26 @@ export async function fetchTaskById(id: string): Promise<TaskWithRelations | nul
   if (!data) return null;
   const [withClient] = await attachClients([data as unknown as TaskWithCategory]);
   return withClient;
+}
+
+export async function fetchCategories(): Promise<CategoryRow[]> {
+  const { data, error } = await supabase.from('categories').select('id, name, slug').order('id');
+  if (error) throw error;
+  return data ?? [];
+}
+
+// client_id has no DB default (not null, no `default` clause) — the caller
+// must supply it explicitly. See "Before you start" in the plan for why this
+// isn't resolved internally via useAuth().
+export async function createTask(clientId: string, input: CreateTaskInput): Promise<void> {
+  const { error } = await supabase.from('tasks').insert({
+    client_id: clientId,
+    category_id: input.category_id,
+    title: input.title,
+    description: input.description,
+    budget_reference: input.budget_reference,
+    city: input.city,
+    address_approx: input.address_approx,
+  });
+  if (error) throw error;
 }
