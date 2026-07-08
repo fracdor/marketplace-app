@@ -79,21 +79,23 @@ export function PostTaskForm({ onSubmit }: PostTaskFormProps) {
         onRequestClose={() => setCategoryModalOpen(false)}
       >
         <Pressable className="flex-1 bg-black/40 justify-end" onPress={() => setCategoryModalOpen(false)}>
-          <View className="bg-white rounded-t-2xl p-4">
-            <Text className="text-base font-bold text-slate-900 mb-3">Elige una categoría</Text>
-            {(categories ?? []).map((cat) => (
-              <Pressable
-                key={cat.id}
-                onPress={() => {
-                  setValue('category_id', cat.id, { shouldValidate: true });
-                  setCategoryModalOpen(false);
-                }}
-                className="py-3 px-2"
-              >
-                <Text className="text-sm text-slate-800">{cat.name}</Text>
-              </Pressable>
-            ))}
-          </View>
+          <Pressable onPress={(e) => e.stopPropagation()}>
+            <View className="bg-white rounded-t-2xl p-4">
+              <Text className="text-base font-bold text-slate-900 mb-3">Elige una categoría</Text>
+              {(categories ?? []).map((cat) => (
+                <Pressable
+                  key={cat.id}
+                  onPress={() => {
+                    setValue('category_id', cat.id, { shouldValidate: true });
+                    setCategoryModalOpen(false);
+                  }}
+                  className="py-3 px-2"
+                >
+                  <Text className="text-sm text-slate-800">{cat.name}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </Pressable>
         </Pressable>
       </Modal>
 
