@@ -1,20 +1,31 @@
+// features/tasks/__tests__/hooks.test.tsx
 import type { ReactElement } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react-native';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
 import { Text } from 'react-native';
-import { useOpenTasks, useTask } from '@/features/tasks/hooks';
-import type { TaskWithRelations } from '@/features/tasks/types';
+import { useOpenTasks, useTask, useCategories, useCreateTask } from '@/features/tasks/hooks';
+import type { CreateTaskInput, TaskWithRelations } from '@/features/tasks/types';
 
 jest.mock('@/features/tasks/api', () => ({
   fetchOpenTasks: jest.fn(),
   fetchTaskById: jest.fn(),
+  fetchCategories: jest.fn(),
+  createTask: jest.fn(),
 }));
 
-import { fetchOpenTasks, fetchTaskById } from '@/features/tasks/api';
+jest.mock('@/features/auth/useAuth', () => ({
+  useAuth: jest.fn(),
+}));
 
-function renderWithClient(ui: ReactElement) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+import { fetchOpenTasks, fetchTaskById, fetchCategories, createTask } from '@/features/tasks/api';
+import { useAuth } from '@/features/auth/useAuth';
+
+// RNTL 14: render is async; queries come off the global `screen`, not the
+// render() return value (see LoginForm.test.tsx / ProfileForm.test.tsx for
+// the established pattern in this codebase).
+async function renderWithClient(ui: ReactElement, client = new QueryClient({ defaultOptions: { queries: { retry: false } } })) {
+  await render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+  return client;
 }
 
 const sampleTask: TaskWithRelations = {
@@ -46,6 +57,27 @@ function TaskProbe({ id }: { id: string }) {
   return <Text>{data?.title ?? 'not found'}</Text>;
 }
 
+function CategoriesProbe() {
+  const { data, isPending } = useCategories();
+  if (isPending) return <Text>loading</Text>;
+  return <Text>{data?.length ?? 0} categorías</Text>;
+}
+
+const sampleInput: CreateTaskInput = {
+  category_id: 3,
+  title: 'Arreglar fuga',
+  description: 'Hay una fuga debajo del lavaplatos que necesita reparación.',
+  budget_reference: 80000,
+  city: 'Bogotá',
+  address_approx: null,
+};
+
+function CreateTaskProbe() {
+  const mutation = useCreateTask();
+  if (mutation.isSuccess) return <Text>created</Text>;
+  return <Text onPress={() => mutation.mutate(sampleInput)}>submit</Text>;
+}
+
 describe('useOpenTasks', () => {
   it('resolves with the tasks returned by fetchOpenTasks', async () => {
     (fetchOpenTasks as jest.Mock).mockResolvedValue([sampleTask]);
@@ -59,5 +91,38 @@ describe('useTask', () => {
     (fetchTaskById as jest.Mock).mockResolvedValue(sampleTask);
     await renderWithClient(<TaskProbe id="t1" />);
     await waitFor(() => expect(screen.getByText('Arreglar fuga')).toBeTruthy());
+  });
+});
+
+describe('useCategories', () => {
+  it('resolves with the categories returned by fetchCategories', async () => {
+    (fetchCategories as jest.Mock).mockResolvedValue([
+      { id: 1, name: 'Limpieza del hogar', slug: 'limpieza-hogar' },
+      { id: 3, name: 'Plomería', slug: 'plomeria' },
+    ]);
+    await renderWithClient(<CategoriesProbe />);
+    await waitFor(() => expect(screen.getByText('2 categorías')).toBeTruthy());
+  });
+});
+
+describe('useCreateTask', () => {
+  it('calls createTask with the current session user id and the input', async () => {
+    (useAuth as jest.Mock).mockReturnValue({ session: { user: { id: 'u1' } } });
+    (createTask as jest.Mock).mockResolvedValue(undefined);
+    await renderWithClient(<CreateTaskProbe />);
+    fireEvent.press(screen.getByText('submit'));
+    await waitFor(() => expect(screen.getByText('created')).toBeTruthy());
+    expect(createTask).toHaveBeenCalledWith('u1', sampleInput);
+  });
+
+  it('invalidates the open-tasks list query on success', async () => {
+    (useAuth as jest.Mock).mockReturnValue({ session: { user: { id: 'u1' } } });
+    (createTask as jest.Mock).mockResolvedValue(undefined);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidateSpy = jest.spyOn(client, 'invalidateQueries');
+    await renderWithClient(<CreateTaskProbe />, client);
+    fireEvent.press(screen.getByText('submit'));
+    await waitFor(() => expect(screen.getByText('created')).toBeTruthy());
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['tasks', 'list'] });
   });
 });

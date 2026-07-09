@@ -33,3 +33,22 @@ export interface TaskWithRelations extends Task {
   category: TaskCategory;
   client: TaskClient;
 }
+
+// A row from public.categories, used by the post-task category picker.
+export interface CategoryRow {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+// What PostTaskForm hands to createTask after validating/converting the raw
+// form strings. budget_reference/address_approx are null (not empty string)
+// when the user left them blank, matching the DB columns' nullability.
+export interface CreateTaskInput {
+  category_id: number;
+  title: string;
+  description: string;
+  budget_reference: number | null;
+  city: string;
+  address_approx: string | null;
+}
