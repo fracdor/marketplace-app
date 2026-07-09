@@ -1,5 +1,6 @@
 import { Pressable, Text, View } from 'react-native';
 import { formatBudget } from '@/features/tasks/format';
+import { cn } from '@/lib/utils';
 import type { OfferWithFreelancer } from '@/features/offers/types';
 
 interface OfferListItemProps {
@@ -25,7 +26,7 @@ export function OfferListItem({ offer, onAccept, disabled }: OfferListItemProps)
         accessibilityRole="button"
         onPress={onAccept}
         disabled={disabled}
-        className={disabled ? 'bg-slate-300 px-3 py-2 rounded-xl' : 'bg-brand px-3 py-2 rounded-xl'}
+        className={cn('px-3 py-2 rounded-xl', disabled ? 'bg-slate-300' : 'bg-brand')}
       >
         <Text className="text-white font-bold text-xs">Aceptar</Text>
       </Pressable>
