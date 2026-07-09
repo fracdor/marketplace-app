@@ -48,7 +48,7 @@ const myOffer = {
 function mockDefaults() {
   (useMyTasks as jest.Mock).mockReturnValue({ data: [publishedTask], isPending: false, isError: false, refetch: jest.fn() });
   (useMyOffers as jest.Mock).mockReturnValue({ data: [myOffer], isPending: false, isError: false, refetch: jest.fn() });
-  (useWithdrawOffer as jest.Mock).mockReturnValue({ mutateAsync: jest.fn() });
+  (useWithdrawOffer as jest.Mock).mockReturnValue({ mutateAsync: jest.fn(), isPending: false });
 }
 
 describe('MyTasks', () => {
@@ -77,7 +77,7 @@ describe('MyTasks', () => {
 
   it('calls withdraw when Retirar oferta is pressed in Trabajos', async () => {
     const withdraw = jest.fn();
-    (useWithdrawOffer as jest.Mock).mockReturnValue({ mutateAsync: withdraw });
+    (useWithdrawOffer as jest.Mock).mockReturnValue({ mutateAsync: withdraw, isPending: false });
     await render(<MyTasks />);
     await fireEvent.press(screen.getByText('Trabajos'));
     await waitFor(() => expect(screen.getByText('Retirar oferta')).toBeTruthy());

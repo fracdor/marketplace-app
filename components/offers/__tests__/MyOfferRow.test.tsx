@@ -52,4 +52,14 @@ describe('MyOfferRow', () => {
     await fireEvent.press(screen.getByText('Retirar oferta'));
     expect(onWithdraw).toHaveBeenCalledTimes(1);
   });
+
+  it('disables the Retirar oferta button when disabled is true', async () => {
+    const offer: MyOfferWithTask = {
+      ...baseOffer,
+      status: 'pending',
+      task: { id: 't1', title: 'Pintar sala', city: 'Bogotá', status: 'open' },
+    };
+    await render(<MyOfferRow offer={offer} onWithdraw={jest.fn()} disabled />);
+    expect(screen.getByTestId('withdraw-offer-button').props.accessibilityState?.disabled).toBe(true);
+  });
 });

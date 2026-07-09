@@ -18,6 +18,8 @@ export default function MyTasks() {
       <View className="flex-row border-b border-slate-200">
         <Pressable
           testID="sub-tab-published"
+          accessibilityRole="tab"
+          accessibilityState={{ selected: subTab === 'published' }}
           onPress={() => setSubTab('published')}
           className={`flex-1 items-center py-3 border-b-2 ${subTab === 'published' ? 'border-brand' : 'border-transparent'}`}
         >
@@ -25,6 +27,8 @@ export default function MyTasks() {
         </Pressable>
         <Pressable
           testID="sub-tab-jobs"
+          accessibilityRole="tab"
+          accessibilityState={{ selected: subTab === 'jobs' }}
           onPress={() => setSubTab('jobs')}
           className={`flex-1 items-center py-3 border-b-2 ${subTab === 'jobs' ? 'border-brand' : 'border-transparent'}`}
         >
@@ -59,6 +63,7 @@ function PublishedTasksList() {
   }
   return (
     <FlatList
+      className="flex-1"
       contentContainerStyle={{ padding: 16 }}
       data={data}
       keyExtractor={(item: MyPublishedTask) => item.id}
@@ -76,7 +81,7 @@ function PublishedTasksList() {
 
 function JobsList() {
   const { data, isPending, isError, refetch } = useMyOffers();
-  const { mutateAsync: withdraw } = useWithdrawOffer();
+  const { mutateAsync: withdraw, isPending: withdrawing } = useWithdrawOffer();
 
   if (isPending) {
     return (
@@ -97,11 +102,16 @@ function JobsList() {
   }
   return (
     <FlatList
+      className="flex-1"
       contentContainerStyle={{ padding: 16 }}
       data={data}
       keyExtractor={(item: MyOfferWithTask) => item.id}
       renderItem={({ item }) => (
-        <MyOfferRow offer={item} onWithdraw={() => withdraw({ offerId: item.id, taskId: item.task_id })} />
+        <MyOfferRow
+          offer={item}
+          onWithdraw={() => withdraw({ offerId: item.id, taskId: item.task_id })}
+          disabled={withdrawing}
+        />
       )}
       ListEmptyComponent={
         <View className="items-center justify-center py-20">
