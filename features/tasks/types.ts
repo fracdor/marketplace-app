@@ -52,3 +52,14 @@ export interface CreateTaskInput {
   city: string;
   address_approx: string | null;
 }
+
+// A row for the "Publicadas" sub-tab of Mis tareas: a task the current user
+// published, enriched with just enough info to avoid a second screen visit
+// per row. offer_count is only meaningful while status === 'open';
+// assigned_freelancer is only meaningful once status is 'assigned' or
+// 'completed' — both are derived server-side by fetchMyTasks, not raw
+// columns on the tasks table.
+export interface MyPublishedTask extends Task {
+  offer_count: number;
+  assigned_freelancer: { full_name: string | null } | null;
+}

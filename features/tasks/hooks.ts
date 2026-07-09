@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchOpenTasks, fetchTaskById, fetchCategories, createTask } from '@/features/tasks/api';
+import { fetchOpenTasks, fetchTaskById, fetchCategories, createTask, fetchMyTasks, completeTask } from '@/features/tasks/api';
 import { useAuth } from '@/features/auth/useAuth';
 import type { CreateTaskInput } from '@/features/tasks/types';
 
@@ -48,6 +48,27 @@ export function useCreateTask() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
+    },
+  });
+}
+
+export function useMyTasks() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: taskKeys.list('mine'),
+    // Safe non-null assertion: only mounted inside (tabs)/* screens, which
+    // never render before the session is resolved. See "Before you start".
+    queryFn: () => fetchMyTasks(session!.user.id),
+  });
+}
+
+export function useCompleteTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (taskId: string) => completeTask(taskId),
+    onSuccess: (_data, taskId) => {
+      queryClient.invalidateQueries({ queryKey: taskKeys.detail(taskId) });
+      queryClient.invalidateQueries({ queryKey: taskKeys.list('mine') });
     },
   });
 }
