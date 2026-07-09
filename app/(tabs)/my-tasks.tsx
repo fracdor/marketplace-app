@@ -5,6 +5,7 @@ import { PublishedTaskRow } from '@/components/tasks/PublishedTaskRow';
 import { MyOfferRow } from '@/components/offers/MyOfferRow';
 import { useMyTasks } from '@/features/tasks/hooks';
 import { useMyOffers, useWithdrawOffer } from '@/features/offers/hooks';
+import { mapAuthError } from '@/features/auth/errors';
 import type { MyPublishedTask } from '@/features/tasks/types';
 import type { MyOfferWithTask } from '@/features/offers/types';
 
@@ -82,6 +83,16 @@ function PublishedTasksList() {
 function JobsList() {
   const { data, isPending, isError, refetch } = useMyOffers();
   const { mutateAsync: withdraw, isPending: withdrawing } = useWithdrawOffer();
+  const [withdrawError, setWithdrawError] = useState<string | null>(null);
+
+  const handleWithdraw = async (offerId: string, taskId: string) => {
+    setWithdrawError(null);
+    try {
+      await withdraw({ offerId, taskId });
+    } catch (e) {
+      setWithdrawError(e instanceof Error ? mapAuthError(e.message) : 'Error al retirar la oferta');
+    }
+  };
 
   if (isPending) {
     return (
@@ -101,23 +112,28 @@ function JobsList() {
     );
   }
   return (
-    <FlatList
-      className="flex-1"
-      contentContainerStyle={{ padding: 16 }}
-      data={data}
-      keyExtractor={(item: MyOfferWithTask) => item.id}
-      renderItem={({ item }) => (
-        <MyOfferRow
-          offer={item}
-          onWithdraw={() => withdraw({ offerId: item.id, taskId: item.task_id })}
-          disabled={withdrawing}
-        />
-      )}
-      ListEmptyComponent={
-        <View className="items-center justify-center py-20">
-          <Text className="text-slate-500">Aún no has hecho ninguna oferta.</Text>
-        </View>
-      }
-    />
+    <View className="flex-1">
+      {withdrawError ? (
+        <Text className="text-xs text-red-500 text-center mt-2">{withdrawError}</Text>
+      ) : null}
+      <FlatList
+        className="flex-1"
+        contentContainerStyle={{ padding: 16 }}
+        data={data}
+        keyExtractor={(item: MyOfferWithTask) => item.id}
+        renderItem={({ item }) => (
+          <MyOfferRow
+            offer={item}
+            onWithdraw={() => handleWithdraw(item.id, item.task_id)}
+            disabled={withdrawing}
+          />
+        )}
+        ListEmptyComponent={
+          <View className="items-center justify-center py-20">
+            <Text className="text-slate-500">Aún no has hecho ninguna oferta.</Text>
+          </View>
+        }
+      />
+    </View>
   );
 }

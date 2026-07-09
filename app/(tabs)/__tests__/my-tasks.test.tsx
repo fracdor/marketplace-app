@@ -84,4 +84,14 @@ describe('MyTasks', () => {
     await fireEvent.press(screen.getByText('Retirar oferta'));
     expect(withdraw).toHaveBeenCalledWith({ offerId: 'o1', taskId: 't2' });
   });
+
+  it('shows an error message when withdrawing an offer fails', async () => {
+    const withdraw = jest.fn().mockRejectedValue(new Error('network error'));
+    (useWithdrawOffer as jest.Mock).mockReturnValue({ mutateAsync: withdraw, isPending: false });
+    await render(<MyTasks />);
+    await fireEvent.press(screen.getByText('Trabajos'));
+    await waitFor(() => expect(screen.getByText('Retirar oferta')).toBeTruthy());
+    await fireEvent.press(screen.getByText('Retirar oferta'));
+    await waitFor(() => expect(screen.getByText('Algo salió mal. Intenta de nuevo.')).toBeTruthy());
+  });
 });
