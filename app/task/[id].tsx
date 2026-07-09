@@ -1,11 +1,61 @@
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import { Stack, useLocalSearchParams } from 'expo-router';
-import { useTask } from '@/features/tasks/hooks';
+import { useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useTask, useCompleteTask } from '@/features/tasks/hooks';
+import { useOffersForTask, useAcceptOffer, useWithdrawOffer } from '@/features/offers/hooks';
+import { useAuth } from '@/features/auth/useAuth';
 import { formatBudget, formatRelativeTime } from '@/features/tasks/format';
+import { mapAuthError } from '@/features/auth/errors';
+import { TaskActionZone } from '@/components/tasks/TaskActionZone';
 
 export default function TaskDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
+  const { session } = useAuth();
   const { data: task, isPending, isError, refetch } = useTask(id);
+  const { data: offers } = useOffersForTask(id);
+  const { mutateAsync: acceptOffer, isPending: accepting } = useAcceptOffer();
+  const { mutateAsync: withdrawOffer, isPending: withdrawing } = useWithdrawOffer();
+  const { mutateAsync: completeTask, isPending: completing } = useCompleteTask();
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const confirmAccept = async (offerId: string) => {
+    setActionError(null);
+    try {
+      await acceptOffer({ offerId, taskId: id });
+    } catch (e) {
+      setActionError(e instanceof Error ? mapAuthError(e.message) : 'Error al aceptar la oferta');
+    }
+  };
+
+  const handleAccept = (offerId: string, freelancerName: string, price: number) => {
+    Alert.alert(
+      'Aceptar oferta',
+      `¿Aceptar la oferta de ${freelancerName} por ${formatBudget(price)}? Se rechazarán las demás ofertas.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Aceptar', onPress: () => confirmAccept(offerId) },
+      ],
+    );
+  };
+
+  const handleWithdraw = async (offerId: string) => {
+    setActionError(null);
+    try {
+      await withdrawOffer({ offerId, taskId: id });
+    } catch (e) {
+      setActionError(e instanceof Error ? mapAuthError(e.message) : 'Error al retirar la oferta');
+    }
+  };
+
+  const handleComplete = async () => {
+    setActionError(null);
+    try {
+      await completeTask(id);
+    } catch (e) {
+      setActionError(e instanceof Error ? mapAuthError(e.message) : 'Error al completar la tarea');
+    }
+  };
 
   return (
     <View className="flex-1 bg-white">
@@ -56,9 +106,19 @@ export default function TaskDetailScreen() {
             </View>
           </ScrollView>
           <View className="border-t border-slate-100 px-5 py-4">
-            <View className="bg-slate-300 rounded-xl h-11 items-center justify-center">
-              <Text className="text-slate-500 font-bold text-sm">Ofertar (próximamente)</Text>
-            </View>
+            {actionError ? <Text className="text-xs text-red-500 mb-2">{actionError}</Text> : null}
+            <TaskActionZone
+              task={task}
+              offers={offers ?? []}
+              myId={session?.user.id}
+              accepting={accepting}
+              withdrawing={withdrawing}
+              completing={completing}
+              onAccept={handleAccept}
+              onWithdraw={handleWithdraw}
+              onComplete={handleComplete}
+              onOffer={() => router.push({ pathname: '/offer/create', params: { taskId: task.id } })}
+            />
           </View>
         </>
       )}
