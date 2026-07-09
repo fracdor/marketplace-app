@@ -57,7 +57,7 @@ describe('TaskDetailScreen', () => {
 
   it('renders the task fields and an Ofertar button for a freelancer browsing an open task', async () => {
     (useTask as jest.Mock).mockReturnValue({ data: task, isPending: false, isError: false });
-    (useOffersForTask as jest.Mock).mockReturnValue({ data: [] });
+    (useOffersForTask as jest.Mock).mockReturnValue({ data: [], isPending: false, isError: false });
     (useAuth as jest.Mock).mockReturnValue({ session: { user: { id: 'u2' } } });
     await render(<TaskDetailScreen />);
     expect(screen.getByText('Arreglar fuga en la cocina')).toBeTruthy();
@@ -70,21 +70,37 @@ describe('TaskDetailScreen', () => {
 
   it('shows a loading state while pending, not the task content', async () => {
     (useTask as jest.Mock).mockReturnValue({ data: undefined, isPending: true, isError: false });
-    (useOffersForTask as jest.Mock).mockReturnValue({ data: undefined });
+    (useOffersForTask as jest.Mock).mockReturnValue({ data: undefined, isPending: false, isError: false });
     (useAuth as jest.Mock).mockReturnValue({ session: { user: { id: 'u2' } } });
     await render(<TaskDetailScreen />);
     expect(screen.queryByText('Arreglar fuga en la cocina')).toBeNull();
   });
 
-  it('shows a retry button on error, and pressing it calls refetch', async () => {
-    const refetch = jest.fn();
-    (useTask as jest.Mock).mockReturnValue({ data: undefined, isPending: false, isError: true, refetch });
-    (useOffersForTask as jest.Mock).mockReturnValue({ data: undefined });
+  it('shows a loading state while the task loaded but offers are still pending', async () => {
+    (useTask as jest.Mock).mockReturnValue({ data: task, isPending: false, isError: false });
+    (useOffersForTask as jest.Mock).mockReturnValue({ data: undefined, isPending: true, isError: false });
+    (useAuth as jest.Mock).mockReturnValue({ session: { user: { id: 'u2' } } });
+    await render(<TaskDetailScreen />);
+    expect(screen.queryByText('Arreglar fuga en la cocina')).toBeNull();
+    expect(screen.queryByText('Ofertar')).toBeNull();
+  });
+
+  it('shows a retry button on error, and pressing it calls refetch for both queries', async () => {
+    const refetchTask = jest.fn();
+    const refetchOffers = jest.fn();
+    (useTask as jest.Mock).mockReturnValue({ data: undefined, isPending: false, isError: true, refetch: refetchTask });
+    (useOffersForTask as jest.Mock).mockReturnValue({
+      data: undefined,
+      isPending: false,
+      isError: false,
+      refetch: refetchOffers,
+    });
     (useAuth as jest.Mock).mockReturnValue({ session: { user: { id: 'u2' } } });
     await render(<TaskDetailScreen />);
     expect(screen.getByText('No pudimos cargar esta tarea.')).toBeTruthy();
     await fireEvent.press(screen.getByText('Reintentar'));
-    expect(refetch).toHaveBeenCalledTimes(1);
+    expect(refetchTask).toHaveBeenCalledTimes(1);
+    expect(refetchOffers).toHaveBeenCalledTimes(1);
   });
 
   it('asks for confirmation before accepting an offer, and calls acceptOffer when confirmed', async () => {
@@ -99,7 +115,7 @@ describe('TaskDetailScreen', () => {
       freelancer: { full_name: 'Carlos Ruiz', avatar_url: null },
     };
     (useTask as jest.Mock).mockReturnValue({ data: task, isPending: false, isError: false });
-    (useOffersForTask as jest.Mock).mockReturnValue({ data: [receivedOffer] });
+    (useOffersForTask as jest.Mock).mockReturnValue({ data: [receivedOffer], isPending: false, isError: false });
     (useAuth as jest.Mock).mockReturnValue({ session: { user: { id: 'u1' } } }); // owner
     const acceptOffer = jest.fn().mockResolvedValue(undefined);
     (useAcceptOffer as jest.Mock).mockReturnValue({ mutateAsync: acceptOffer, isPending: false });
@@ -114,5 +130,44 @@ describe('TaskDetailScreen', () => {
 
     expect(alertSpy).toHaveBeenCalled();
     await waitFor(() => expect(acceptOffer).toHaveBeenCalledWith({ offerId: 'o1', taskId: 't1' }));
+  });
+
+  it('surfaces a mapped error when withdrawing an offer fails', async () => {
+    const myOffer = {
+      id: 'o2',
+      task_id: 't1',
+      freelancer_id: 'u2',
+      price: 90000,
+      message: null,
+      status: 'pending' as const,
+      created_at: new Date().toISOString(),
+      freelancer: { full_name: 'Carlos Ruiz', avatar_url: null },
+    };
+    (useTask as jest.Mock).mockReturnValue({ data: task, isPending: false, isError: false });
+    (useOffersForTask as jest.Mock).mockReturnValue({ data: [myOffer], isPending: false, isError: false });
+    (useAuth as jest.Mock).mockReturnValue({ session: { user: { id: 'u2' } } }); // freelancer with own pending offer
+    const withdrawOffer = jest.fn().mockRejectedValue(new Error('some backend error'));
+    (useWithdrawOffer as jest.Mock).mockReturnValue({ mutateAsync: withdrawOffer, isPending: false });
+
+    await render(<TaskDetailScreen />);
+    await fireEvent.press(screen.getByText('Retirar oferta'));
+
+    await waitFor(() => expect(withdrawOffer).toHaveBeenCalledWith({ offerId: 'o2', taskId: 't1' }));
+    expect(await screen.findByText('Algo salió mal. Intenta de nuevo.')).toBeTruthy();
+  });
+
+  it('surfaces a mapped error when completing a task fails', async () => {
+    const assignedTask = { ...task, status: 'assigned' as const, assigned_freelancer_id: 'u2' };
+    (useTask as jest.Mock).mockReturnValue({ data: assignedTask, isPending: false, isError: false });
+    (useOffersForTask as jest.Mock).mockReturnValue({ data: [], isPending: false, isError: false });
+    (useAuth as jest.Mock).mockReturnValue({ session: { user: { id: 'u1' } } }); // owner
+    const completeTask = jest.fn().mockRejectedValue(new Error('some backend error'));
+    (useCompleteTask as jest.Mock).mockReturnValue({ mutateAsync: completeTask, isPending: false });
+
+    await render(<TaskDetailScreen />);
+    await fireEvent.press(screen.getByText('Marcar como completada'));
+
+    await waitFor(() => expect(completeTask).toHaveBeenCalledWith('t1'));
+    expect(await screen.findByText('Algo salió mal. Intenta de nuevo.')).toBeTruthy();
   });
 });

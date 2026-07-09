@@ -12,12 +12,24 @@ export default function TaskDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { session } = useAuth();
-  const { data: task, isPending, isError, refetch } = useTask(id);
-  const { data: offers } = useOffersForTask(id);
+  const { data: task, isPending: taskPending, isError: taskError, refetch: refetchTask } = useTask(id);
+  const {
+    data: offers,
+    isPending: offersPending,
+    isError: offersError,
+    refetch: refetchOffers,
+  } = useOffersForTask(id);
   const { mutateAsync: acceptOffer, isPending: accepting } = useAcceptOffer();
   const { mutateAsync: withdrawOffer, isPending: withdrawing } = useWithdrawOffer();
   const { mutateAsync: completeTask, isPending: completing } = useCompleteTask();
   const [actionError, setActionError] = useState<string | null>(null);
+
+  const isPending = taskPending || offersPending;
+  const isError = taskError || offersError;
+  const refetch = () => {
+    refetchTask();
+    refetchOffers();
+  };
 
   const confirmAccept = async (offerId: string) => {
     setActionError(null);
