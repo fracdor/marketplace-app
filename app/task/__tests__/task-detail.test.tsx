@@ -11,6 +11,7 @@ jest.mock('expo-router', () => ({
 jest.mock('@/features/tasks/hooks', () => ({
   useTask: jest.fn(),
   useCompleteTask: jest.fn(),
+  useCancelTask: jest.fn(),
 }));
 
 jest.mock('@/features/offers/hooks', () => ({
@@ -23,7 +24,7 @@ jest.mock('@/features/auth/useAuth', () => ({
   useAuth: jest.fn(),
 }));
 
-import { useTask, useCompleteTask } from '@/features/tasks/hooks';
+import { useTask, useCompleteTask, useCancelTask } from '@/features/tasks/hooks';
 import { useOffersForTask, useAcceptOffer, useWithdrawOffer } from '@/features/offers/hooks';
 import { useAuth } from '@/features/auth/useAuth';
 
@@ -48,6 +49,7 @@ function mockActionDefaults() {
   (useCompleteTask as jest.Mock).mockReturnValue({ mutateAsync: jest.fn(), isPending: false });
   (useAcceptOffer as jest.Mock).mockReturnValue({ mutateAsync: jest.fn(), isPending: false });
   (useWithdrawOffer as jest.Mock).mockReturnValue({ mutateAsync: jest.fn(), isPending: false });
+  (useCancelTask as jest.Mock).mockReturnValue({ mutateAsync: jest.fn(), isPending: false });
 }
 
 describe('TaskDetailScreen', () => {
@@ -169,5 +171,51 @@ describe('TaskDetailScreen', () => {
 
     await waitFor(() => expect(completeTask).toHaveBeenCalledWith('t1'));
     expect(await screen.findByText('Algo salió mal. Intenta de nuevo.')).toBeTruthy();
+  });
+
+  it('asks for confirmation before cancelling a task with no offers, and calls cancelTask when confirmed', async () => {
+    (useTask as jest.Mock).mockReturnValue({ data: task, isPending: false, isError: false });
+    (useOffersForTask as jest.Mock).mockReturnValue({ data: [], isPending: false, isError: false });
+    (useAuth as jest.Mock).mockReturnValue({ session: { user: { id: 'u1' } } }); // owner
+    const cancelTask = jest.fn().mockResolvedValue(undefined);
+    (useCancelTask as jest.Mock).mockReturnValue({ mutateAsync: cancelTask, isPending: false });
+
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation((_title, message, buttons) => {
+      expect(message).toBe('¿Cancelar esta tarea? No podrás reabrirla.');
+      const confirmButton = buttons?.find((b) => b.text === 'Sí, cancelar');
+      confirmButton?.onPress?.();
+    });
+
+    await render(<TaskDetailScreen />);
+    await fireEvent.press(screen.getByText('Cancelar tarea'));
+
+    expect(alertSpy).toHaveBeenCalled();
+    await waitFor(() => expect(cancelTask).toHaveBeenCalledWith('t1'));
+  });
+
+  it('includes the offer count in the cancel confirmation message when there is a pending offer', async () => {
+    const receivedOffer = {
+      id: 'o1',
+      task_id: 't1',
+      freelancer_id: 'u2',
+      price: 85000,
+      message: null,
+      status: 'pending' as const,
+      created_at: new Date().toISOString(),
+      freelancer: { full_name: 'Carlos Ruiz', avatar_url: null },
+    };
+    (useTask as jest.Mock).mockReturnValue({ data: task, isPending: false, isError: false });
+    (useOffersForTask as jest.Mock).mockReturnValue({ data: [receivedOffer], isPending: false, isError: false });
+    (useAuth as jest.Mock).mockReturnValue({ session: { user: { id: 'u1' } } }); // owner
+    (useCancelTask as jest.Mock).mockReturnValue({ mutateAsync: jest.fn().mockResolvedValue(undefined), isPending: false });
+
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation((_title, message) => {
+      expect(message).toBe('¿Cancelar esta tarea? Se cancelará también 1 oferta recibida. No podrás reabrirla.');
+    });
+
+    await render(<TaskDetailScreen />);
+    await fireEvent.press(screen.getByText('Cancelar tarea'));
+
+    expect(alertSpy).toHaveBeenCalled();
   });
 });
