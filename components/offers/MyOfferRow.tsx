@@ -19,7 +19,17 @@ export function MyOfferRow({ offer, onWithdraw, disabled }: MyOfferRowProps) {
   // A pending offer's task can be cancelled without anything transitioning
   // the offer itself — offers has no trigger/RPC for this, see the plan's
   // "Before you start" and the design spec. Surface it here instead.
-  const isOrphanedByCancelledTask = offer.status === 'pending' && offer.task?.status === 'cancelled';
+  //
+  // A cancelled task is also RLS-invisible to a freelancer with a still-
+  // pending offer on it (tasks_select_visible requires status = 'open',
+  // or the requester being the client, or being the assigned freelancer —
+  // none of which hold once the task is cancelled and this offer was never
+  // accepted). Since accept_offer() atomically flips a pending offer away
+  // from 'pending' the moment its task becomes 'assigned', a still-pending
+  // offer's task can only be 'open' (visible) or 'cancelled' (RLS-hidden,
+  // task === null) — so a null task on a pending offer implies cancellation.
+  const isOrphanedByCancelledTask =
+    offer.status === 'pending' && (offer.task === null || offer.task.status === 'cancelled');
   const statusText = isOrphanedByCancelledTask ? 'Tarea cancelada' : STATUS_LABEL[offer.status];
 
   return (
