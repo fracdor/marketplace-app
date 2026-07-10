@@ -60,7 +60,7 @@ function renderOwnerZone(
             <Text className="text-slate-500 text-sm text-center">
               Aún no has recibido ofertas para esta tarea.
             </Text>
-            <CancelTaskButton cancelling={cancelling} onCancel={onCancel} />
+            <CancelTaskButton cancelling={cancelling || accepting} onCancel={onCancel} />
           </View>
         );
       }
@@ -70,11 +70,11 @@ function renderOwnerZone(
             <OfferListItem
               key={offer.id}
               offer={offer}
-              disabled={accepting}
+              disabled={accepting || cancelling}
               onAccept={() => onAccept(offer.id, offer.freelancer.full_name ?? 'Anónimo', offer.price)}
             />
           ))}
-          <CancelTaskButton cancelling={cancelling} onCancel={onCancel} />
+          <CancelTaskButton cancelling={cancelling || accepting} onCancel={onCancel} />
         </View>
       );
     }
