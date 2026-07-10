@@ -34,19 +34,30 @@ function offer(overrides: Partial<OfferWithFreelancer>): OfferWithFreelancer {
   };
 }
 
-const noop = { onAccept: jest.fn(), onWithdraw: jest.fn(), onComplete: jest.fn(), onOffer: jest.fn() };
-const flags = { accepting: false, withdrawing: false, completing: false };
+const noop = { onAccept: jest.fn(), onWithdraw: jest.fn(), onComplete: jest.fn(), onOffer: jest.fn(), onCancel: jest.fn() };
+const flags = { accepting: false, withdrawing: false, completing: false, cancelling: false };
 
 describe('TaskActionZone', () => {
-  it('Case A: owner, open, no offers', async () => {
+  it('Case A: owner, open, no offers - shows a Cancelar tarea button', async () => {
     await render(<TaskActionZone task={baseTask} offers={[]} myId="owner-1" {...flags} {...noop} />);
     expect(screen.getByText('Aún no has recibido ofertas para esta tarea.')).toBeTruthy();
+    expect(screen.getByText('Cancelar tarea')).toBeTruthy();
   });
 
-  it('Case B: owner, open, with offers - lists them with an Aceptar button', async () => {
+  it('Case A: pressing Cancelar tarea calls onCancel', async () => {
+    const onCancel = jest.fn();
+    await render(
+      <TaskActionZone task={baseTask} offers={[]} myId="owner-1" {...flags} {...noop} onCancel={onCancel} />,
+    );
+    await fireEvent.press(screen.getByText('Cancelar tarea'));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('Case B: owner, open, with offers - lists them with an Aceptar button and a Cancelar tarea button', async () => {
     await render(<TaskActionZone task={baseTask} offers={[offer({})]} myId="owner-1" {...flags} {...noop} />);
     expect(screen.getByText('Carlos Ruiz · $85.000')).toBeTruthy();
     expect(screen.getByText('Aceptar')).toBeTruthy();
+    expect(screen.getByText('Cancelar tarea')).toBeTruthy();
   });
 
   it('Case B: pressing Aceptar calls onAccept with the offer id, freelancer name, and price', async () => {
@@ -56,6 +67,15 @@ describe('TaskActionZone', () => {
     );
     await fireEvent.press(screen.getByText('Aceptar'));
     expect(onAccept).toHaveBeenCalledWith('o1', 'Carlos Ruiz', 85000);
+  });
+
+  it('Case B: pressing Cancelar tarea calls onCancel even when offers exist', async () => {
+    const onCancel = jest.fn();
+    await render(
+      <TaskActionZone task={baseTask} offers={[offer({})]} myId="owner-1" {...flags} {...noop} onCancel={onCancel} />,
+    );
+    await fireEvent.press(screen.getByText('Cancelar tarea'));
+    expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
   it('Case C: owner, assigned - shows the winner and a Marcar como completada button', async () => {
@@ -192,9 +212,10 @@ describe('TaskActionZone', () => {
     expect(screen.getByText('Ya no puedes ofertar en esta tarea.')).toBeTruthy();
   });
 
-  it('Case J: owner, cancelled - shows a cancelled message', async () => {
+  it('Case J: owner, cancelled - shows a cancelled message, no Cancelar tarea button', async () => {
     const task = { ...baseTask, status: 'cancelled' as const };
     await render(<TaskActionZone task={task} offers={[]} myId="owner-1" {...flags} {...noop} />);
     expect(screen.getByText('Tarea cancelada.')).toBeTruthy();
+    expect(screen.queryByText('Cancelar tarea')).toBeNull();
   });
 });
