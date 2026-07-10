@@ -9,13 +9,15 @@ import { Button } from '@/components/ui/Button';
 
 interface ProfileFormProps {
   onSubmit: (input: ProfileInput) => Promise<void>;
+  initialValues?: ProfileInput;
+  submitLabel?: string;
 }
 
-export function ProfileForm({ onSubmit }: ProfileFormProps) {
+export function ProfileForm({ onSubmit, initialValues, submitLabel = 'Continuar' }: ProfileFormProps) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const { control, handleSubmit, formState } = useForm<ProfileInput>({
     resolver: zodResolver(profileSchema),
-    defaultValues: { full_name: '', city: '' },
+    defaultValues: initialValues ?? { full_name: '', city: '' },
   });
   const submit = handleSubmit(async (values) => {
     setSubmitError(null);
@@ -54,7 +56,7 @@ export function ProfileForm({ onSubmit }: ProfileFormProps) {
         )}
       />
       {submitError ? <Text className="text-xs text-red-500 mb-2">{submitError}</Text> : null}
-      <Button label="Continuar" onPress={submit} loading={formState.isSubmitting} />
+      <Button label={submitLabel} onPress={submit} loading={formState.isSubmitting} />
     </View>
   );
 }
