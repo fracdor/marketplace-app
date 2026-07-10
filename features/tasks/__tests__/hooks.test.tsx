@@ -3,7 +3,7 @@ import type { ReactElement } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
 import { Text } from 'react-native';
-import { useOpenTasks, useTask, useCategories, useCreateTask, useMyTasks, useCompleteTask } from '@/features/tasks/hooks';
+import { useOpenTasks, useTask, useCategories, useCreateTask, useMyTasks, useCompleteTask, useCancelTask } from '@/features/tasks/hooks';
 import type { CreateTaskInput, MyPublishedTask, TaskWithRelations } from '@/features/tasks/types';
 
 jest.mock('@/features/tasks/api', () => ({
@@ -13,13 +13,14 @@ jest.mock('@/features/tasks/api', () => ({
   createTask: jest.fn(),
   fetchMyTasks: jest.fn(),
   completeTask: jest.fn(),
+  cancelTask: jest.fn(),
 }));
 
 jest.mock('@/features/auth/useAuth', () => ({
   useAuth: jest.fn(),
 }));
 
-import { fetchOpenTasks, fetchTaskById, fetchCategories, createTask, fetchMyTasks, completeTask } from '@/features/tasks/api';
+import { fetchOpenTasks, fetchTaskById, fetchCategories, createTask, fetchMyTasks, completeTask, cancelTask } from '@/features/tasks/api';
 import { useAuth } from '@/features/auth/useAuth';
 
 // RNTL 14: render is async; queries come off the global `screen`, not the
@@ -109,6 +110,12 @@ function CompleteTaskProbe() {
   return <Text onPress={() => mutation.mutate('t1')}>complete</Text>;
 }
 
+function CancelTaskProbe() {
+  const mutation = useCancelTask();
+  if (mutation.isSuccess) return <Text>cancelled</Text>;
+  return <Text onPress={() => mutation.mutate('t1')}>cancel</Text>;
+}
+
 describe('useOpenTasks', () => {
   it('resolves with the tasks returned by fetchOpenTasks', async () => {
     (fetchOpenTasks as jest.Mock).mockResolvedValue([sampleTask]);
@@ -186,5 +193,26 @@ describe('useCompleteTask', () => {
     await waitFor(() => expect(screen.getByText('completed')).toBeTruthy());
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['tasks', 'detail', 't1'] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['tasks', 'list', 'mine'] });
+  });
+});
+
+describe('useCancelTask', () => {
+  it('calls cancelTask with the task id', async () => {
+    (cancelTask as jest.Mock).mockResolvedValue(undefined);
+    await renderWithClient(<CancelTaskProbe />);
+    fireEvent.press(screen.getByText('cancel'));
+    await waitFor(() => expect(screen.getByText('cancelled')).toBeTruthy());
+    expect(cancelTask).toHaveBeenCalledWith('t1');
+  });
+
+  it('invalidates the task detail and all task lists on success', async () => {
+    (cancelTask as jest.Mock).mockResolvedValue(undefined);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidateSpy = jest.spyOn(client, 'invalidateQueries');
+    await renderWithClient(<CancelTaskProbe />, client);
+    fireEvent.press(screen.getByText('cancel'));
+    await waitFor(() => expect(screen.getByText('cancelled')).toBeTruthy());
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['tasks', 'detail', 't1'] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['tasks', 'list'] });
   });
 });

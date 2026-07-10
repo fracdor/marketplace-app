@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchOpenTasks, fetchTaskById, fetchCategories, createTask, fetchMyTasks, completeTask } from '@/features/tasks/api';
+import { fetchOpenTasks, fetchTaskById, fetchCategories, createTask, fetchMyTasks, completeTask, cancelTask } from '@/features/tasks/api';
 import { useAuth } from '@/features/auth/useAuth';
 import type { CreateTaskInput } from '@/features/tasks/types';
 
@@ -69,6 +69,17 @@ export function useCompleteTask() {
     onSuccess: (_data, taskId) => {
       queryClient.invalidateQueries({ queryKey: taskKeys.detail(taskId) });
       queryClient.invalidateQueries({ queryKey: taskKeys.list('mine') });
+    },
+  });
+}
+
+export function useCancelTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (taskId: string) => cancelTask(taskId),
+    onSuccess: (_data, taskId) => {
+      queryClient.invalidateQueries({ queryKey: taskKeys.detail(taskId) });
+      queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
     },
   });
 }
