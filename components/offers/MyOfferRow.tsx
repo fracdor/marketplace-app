@@ -28,6 +28,16 @@ export function MyOfferRow({ offer, onWithdraw, disabled }: MyOfferRowProps) {
   // from 'pending' the moment its task becomes 'assigned', a still-pending
   // offer's task can only be 'open' (visible) or 'cancelled' (RLS-hidden,
   // task === null) — so a null task on a pending offer implies cancellation.
+  // Known residual edge case (accepted, not fixed here): under a narrow
+  // concurrent-write race, a brand-new offer INSERT can land as 'pending'
+  // just as a competing accept_offer() call assigns the same task to someone
+  // else — offer_insert_is_valid's plain SELECT isn't locked against
+  // accept_offer()'s FOR UPDATE, so this isn't ruled out by Postgres's
+  // default READ COMMITTED isolation. In that rare case this would read as
+  // "Tarea cancelada" when the task was actually assigned to a competitor.
+  // Closing this properly needs a backend change (e.g. SERIALIZABLE
+  // isolation or an advisory lock in accept_offer()), out of scope for this
+  // frontend-only sub-project.
   const isOrphanedByCancelledTask =
     offer.status === 'pending' && (offer.task === null || offer.task.status === 'cancelled');
   const statusText = isOrphanedByCancelledTask ? 'Tarea cancelada' : STATUS_LABEL[offer.status];
