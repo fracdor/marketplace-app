@@ -146,3 +146,10 @@ export async function completeTask(taskId: string): Promise<void> {
   const { error } = await supabase.from('tasks').update({ status: 'completed' }).eq('id', taskId);
   if (error) throw error;
 }
+
+// No RPC needed — enforce_task_status_transitions already allows
+// open -> cancelled via a plain update, protected by tasks_update_own.
+export async function cancelTask(taskId: string): Promise<void> {
+  const { error } = await supabase.from('tasks').update({ status: 'cancelled' }).eq('id', taskId);
+  if (error) throw error;
+}

@@ -16,13 +16,39 @@ interface MyOfferRowProps {
 }
 
 export function MyOfferRow({ offer, onWithdraw, disabled }: MyOfferRowProps) {
+  // A pending offer's task can be cancelled without anything transitioning
+  // the offer itself — offers has no trigger/RPC for this, see the plan's
+  // "Before you start" and the design spec. Surface it here instead.
+  //
+  // A cancelled task is also RLS-invisible to a freelancer with a still-
+  // pending offer on it (tasks_select_visible requires status = 'open',
+  // or the requester being the client, or being the assigned freelancer —
+  // none of which hold once the task is cancelled and this offer was never
+  // accepted). Since accept_offer() atomically flips a pending offer away
+  // from 'pending' the moment its task becomes 'assigned', a still-pending
+  // offer's task can only be 'open' (visible) or 'cancelled' (RLS-hidden,
+  // task === null) — so a null task on a pending offer implies cancellation.
+  // Known residual edge case (accepted, not fixed here): under a narrow
+  // concurrent-write race, a brand-new offer INSERT can land as 'pending'
+  // just as a competing accept_offer() call assigns the same task to someone
+  // else — offer_insert_is_valid's plain SELECT isn't locked against
+  // accept_offer()'s FOR UPDATE, so this isn't ruled out by Postgres's
+  // default READ COMMITTED isolation. In that rare case this would read as
+  // "Tarea cancelada" when the task was actually assigned to a competitor.
+  // Closing this properly needs a backend change (e.g. SERIALIZABLE
+  // isolation or an advisory lock in accept_offer()), out of scope for this
+  // frontend-only sub-project.
+  const isOrphanedByCancelledTask =
+    offer.status === 'pending' && (offer.task === null || offer.task.status === 'cancelled');
+  const statusText = isOrphanedByCancelledTask ? 'Tarea cancelada' : STATUS_LABEL[offer.status];
+
   return (
     <View testID="my-offer-row" className="bg-white border border-slate-200 rounded-2xl p-4 mb-3">
       <Text className="text-slate-900 font-bold text-sm">{offer.task?.title ?? 'Tarea ya no disponible'}</Text>
       <Text className="text-slate-500 text-xs mt-1">
-        {formatBudget(offer.price)} · {STATUS_LABEL[offer.status]}
+        {formatBudget(offer.price)} · {statusText}
       </Text>
-      {offer.status === 'pending' ? (
+      {offer.status === 'pending' && !isOrphanedByCancelledTask ? (
         <Pressable
           testID="withdraw-offer-button"
           accessibilityRole="button"

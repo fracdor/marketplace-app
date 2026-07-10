@@ -1,7 +1,8 @@
+// app/task/[id].tsx
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useTask, useCompleteTask } from '@/features/tasks/hooks';
+import { useTask, useCompleteTask, useCancelTask } from '@/features/tasks/hooks';
 import { useOffersForTask, useAcceptOffer, useWithdrawOffer } from '@/features/offers/hooks';
 import { useAuth } from '@/features/auth/useAuth';
 import { formatBudget, formatRelativeTime } from '@/features/tasks/format';
@@ -22,6 +23,7 @@ export default function TaskDetailScreen() {
   const { mutateAsync: acceptOffer, isPending: accepting } = useAcceptOffer();
   const { mutateAsync: withdrawOffer, isPending: withdrawing } = useWithdrawOffer();
   const { mutateAsync: completeTask, isPending: completing } = useCompleteTask();
+  const { mutateAsync: cancelTask, isPending: cancelling } = useCancelTask();
   const [actionError, setActionError] = useState<string | null>(null);
 
   const isPending = taskPending || offersPending;
@@ -67,6 +69,29 @@ export default function TaskDetailScreen() {
     } catch (e) {
       setActionError(e instanceof Error ? mapAuthError(e.message) : 'Error al completar la tarea');
     }
+  };
+
+  const confirmCancel = async () => {
+    setActionError(null);
+    try {
+      await cancelTask(id);
+    } catch (e) {
+      setActionError(e instanceof Error ? mapAuthError(e.message) : 'Error al cancelar la tarea');
+    }
+  };
+
+  const handleCancel = () => {
+    const offerCount = offers?.length ?? 0;
+    const message =
+      offerCount === 0
+        ? '¿Cancelar esta tarea? No podrás reabrirla.'
+        : offerCount === 1
+          ? '¿Cancelar esta tarea? Se cancelará también 1 oferta recibida. No podrás reabrirla.'
+          : `¿Cancelar esta tarea? Se cancelarán también las ${offerCount} ofertas recibidas. No podrás reabrirla.`;
+    Alert.alert('Cancelar tarea', message, [
+      { text: 'Volver', style: 'cancel' },
+      { text: 'Sí, cancelar', onPress: () => confirmCancel() },
+    ]);
   };
 
   return (
@@ -126,10 +151,12 @@ export default function TaskDetailScreen() {
               accepting={accepting}
               withdrawing={withdrawing}
               completing={completing}
+              cancelling={cancelling}
               onAccept={handleAccept}
               onWithdraw={handleWithdraw}
               onComplete={handleComplete}
               onOffer={() => router.push({ pathname: '/offer/create', params: { taskId: task.id } })}
+              onCancel={handleCancel}
             />
           </View>
         </>

@@ -12,10 +12,30 @@ interface TaskActionZoneProps {
   accepting: boolean;
   withdrawing: boolean;
   completing: boolean;
+  cancelling: boolean;
   onAccept: (offerId: string, freelancerName: string, price: number) => void;
   onWithdraw: (offerId: string) => void;
   onComplete: () => void;
   onOffer: () => void;
+  onCancel: () => void;
+}
+
+function CancelTaskButton({ cancelling, onCancel }: { cancelling: boolean; onCancel: () => void }) {
+  return (
+    <Pressable
+      testID="cancel-task-button"
+      accessibilityRole="button"
+      onPress={onCancel}
+      disabled={cancelling}
+      className="mt-3 bg-red-500 rounded-xl h-11 items-center justify-center"
+    >
+      {cancelling ? (
+        <ActivityIndicator color="#ffffff" />
+      ) : (
+        <Text className="text-white font-bold text-sm">Cancelar tarea</Text>
+      )}
+    </Pressable>
+  );
 }
 
 // Explicit `: ReactElement` return type + a switch with no `default` case is
@@ -27,16 +47,21 @@ function renderOwnerZone(
   offers: OfferWithFreelancer[],
   accepting: boolean,
   completing: boolean,
+  cancelling: boolean,
   onAccept: (offerId: string, freelancerName: string, price: number) => void,
   onComplete: () => void,
+  onCancel: () => void,
 ): ReactElement {
   switch (task.status) {
     case 'open': {
       if (offers.length === 0) {
         return (
-          <Text className="text-slate-500 text-sm text-center">
-            Aún no has recibido ofertas para esta tarea.
-          </Text>
+          <View>
+            <Text className="text-slate-500 text-sm text-center">
+              Aún no has recibido ofertas para esta tarea.
+            </Text>
+            <CancelTaskButton cancelling={cancelling || accepting} onCancel={onCancel} />
+          </View>
         );
       }
       return (
@@ -45,10 +70,11 @@ function renderOwnerZone(
             <OfferListItem
               key={offer.id}
               offer={offer}
-              disabled={accepting}
+              disabled={accepting || cancelling}
               onAccept={() => onAccept(offer.id, offer.freelancer.full_name ?? 'Anónimo', offer.price)}
             />
           ))}
+          <CancelTaskButton cancelling={cancelling || accepting} onCancel={onCancel} />
         </View>
       );
     }
@@ -124,16 +150,18 @@ export function TaskActionZone({
   accepting,
   withdrawing,
   completing,
+  cancelling,
   onAccept,
   onWithdraw,
   onComplete,
   onOffer,
+  onCancel,
 }: TaskActionZoneProps) {
   const isOwner = task.client_id === myId;
   const isAssignedFreelancer = task.assigned_freelancer_id !== null && task.assigned_freelancer_id === myId;
 
   if (isOwner) {
-    return renderOwnerZone(task, offers, accepting, completing, onAccept, onComplete);
+    return renderOwnerZone(task, offers, accepting, completing, cancelling, onAccept, onComplete, onCancel);
   }
 
   if (isAssignedFreelancer) {

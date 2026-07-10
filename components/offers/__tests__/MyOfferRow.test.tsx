@@ -62,4 +62,26 @@ describe('MyOfferRow', () => {
     await render(<MyOfferRow offer={offer} onWithdraw={jest.fn()} disabled />);
     expect(screen.getByTestId('withdraw-offer-button').props.accessibilityState?.disabled).toBe(true);
   });
+
+  it("shows Tarea cancelada and hides the withdraw button when a pending offer's task was cancelled", async () => {
+    const offer: MyOfferWithTask = {
+      ...baseOffer,
+      status: 'pending',
+      task: { id: 't1', title: 'Pintar sala', city: 'Bogotá', status: 'cancelled' },
+    };
+    await render(<MyOfferRow offer={offer} onWithdraw={jest.fn()} />);
+    expect(screen.getByText('$85.000 · Tarea cancelada')).toBeTruthy();
+    expect(screen.queryByText('Retirar oferta')).toBeNull();
+  });
+
+  it('shows Tarea cancelada and hides the withdraw button when a pending offer\'s task is no longer visible (RLS-hidden, implies cancelled)', async () => {
+    const offer: MyOfferWithTask = {
+      ...baseOffer,
+      status: 'pending',
+      task: null,
+    };
+    await render(<MyOfferRow offer={offer} onWithdraw={jest.fn()} />);
+    expect(screen.getByText('$85.000 · Tarea cancelada')).toBeTruthy();
+    expect(screen.queryByText('Retirar oferta')).toBeNull();
+  });
 });
