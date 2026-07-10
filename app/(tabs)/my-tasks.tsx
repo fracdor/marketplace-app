@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { PublishedTaskRow } from '@/components/tasks/PublishedTaskRow';
 import { MyOfferRow } from '@/components/offers/MyOfferRow';
-import { useMyTasks } from '@/features/tasks/hooks';
+import { useMyTasks, useCancelTask } from '@/features/tasks/hooks';
 import { useMyOffers, useWithdrawOffer } from '@/features/offers/hooks';
 import { mapAuthError } from '@/features/auth/errors';
 import type { MyPublishedTask } from '@/features/tasks/types';
@@ -44,6 +44,30 @@ export default function MyTasks() {
 function PublishedTasksList() {
   const router = useRouter();
   const { data, isPending, isError, refetch } = useMyTasks();
+  const { mutateAsync: cancelTask, isPending: cancelling } = useCancelTask();
+  const [cancelError, setCancelError] = useState<string | null>(null);
+
+  const confirmCancel = async (taskId: string) => {
+    setCancelError(null);
+    try {
+      await cancelTask(taskId);
+    } catch (e) {
+      setCancelError(e instanceof Error ? mapAuthError(e.message) : 'Error al cancelar la tarea');
+    }
+  };
+
+  const handleCancel = (taskId: string, offerCount: number) => {
+    const message =
+      offerCount === 0
+        ? '¿Cancelar esta tarea? No podrás reabrirla.'
+        : offerCount === 1
+          ? '¿Cancelar esta tarea? Se cancelará también 1 oferta recibida. No podrás reabrirla.'
+          : `¿Cancelar esta tarea? Se cancelarán también las ${offerCount} ofertas recibidas. No podrás reabrirla.`;
+    Alert.alert('Cancelar tarea', message, [
+      { text: 'Volver', style: 'cancel' },
+      { text: 'Sí, cancelar', onPress: () => confirmCancel(taskId) },
+    ]);
+  };
 
   if (isPending) {
     return (
@@ -63,20 +87,30 @@ function PublishedTasksList() {
     );
   }
   return (
-    <FlatList
-      className="flex-1"
-      contentContainerStyle={{ padding: 16 }}
-      data={data}
-      keyExtractor={(item: MyPublishedTask) => item.id}
-      renderItem={({ item }) => (
-        <PublishedTaskRow task={item} onPress={() => router.push(`/task/${item.id}`)} />
-      )}
-      ListEmptyComponent={
-        <View className="items-center justify-center py-20">
-          <Text className="text-slate-500">Aún no has publicado ninguna tarea.</Text>
-        </View>
-      }
-    />
+    <View className="flex-1">
+      {cancelError ? (
+        <Text className="text-xs text-red-500 text-center mt-2">{cancelError}</Text>
+      ) : null}
+      <FlatList
+        className="flex-1"
+        contentContainerStyle={{ padding: 16 }}
+        data={data}
+        keyExtractor={(item: MyPublishedTask) => item.id}
+        renderItem={({ item }) => (
+          <PublishedTaskRow
+            task={item}
+            onPress={() => router.push(`/task/${item.id}`)}
+            onCancel={() => handleCancel(item.id, item.offer_count)}
+            cancelling={cancelling}
+          />
+        )}
+        ListEmptyComponent={
+          <View className="items-center justify-center py-20">
+            <Text className="text-slate-500">Aún no has publicado ninguna tarea.</Text>
+          </View>
+        }
+      />
+    </View>
   );
 }
 
