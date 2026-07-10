@@ -15,9 +15,21 @@ export default function ProfileTab() {
   const { session, profile, refreshProfile } = useAuth();
   const [mode, setMode] = useState<Mode>('view');
 
-  // Guarded by the app's own root gate (app/index.tsx / app/(tabs)/_layout.tsx):
-  // this screen only ever mounts once session+profile are resolved.
-  if (!session || !profile) return null;
+  if (!session) return null; // brief window before the app's own gate would already have redirected
+
+  if (!profile) {
+    // Reachable in practice, not just a mount-time gap: fetchProfile swallows
+    // errors and returns null rather than throwing, so a transient failure in
+    // the post-save refreshProfile() call (see handleSave below) can leave
+    // profile null here even after a successful save. Give the user a way
+    // out instead of a permanently blank screen.
+    return (
+      <View className="flex-1 items-center justify-center px-6 bg-white">
+        <Text className="text-slate-500 text-center mb-4">No pudimos cargar tu perfil.</Text>
+        <Button label="Reintentar" onPress={() => refreshProfile()} />
+      </View>
+    );
+  }
 
   const handleSave = async (input: ProfileInput) => {
     await saveProfile(session.user.id, input);

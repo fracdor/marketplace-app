@@ -89,4 +89,17 @@ describe('ProfileTab', () => {
     await fireEvent.press(screen.getByText('Cerrar sesión'));
     await waitFor(() => expect(signOut).toHaveBeenCalledTimes(1));
   });
+
+  it('shows a retry option when the profile is unavailable', async () => {
+    const refreshProfile = jest.fn().mockResolvedValue(undefined);
+    (useAuth as jest.Mock).mockReturnValue({
+      session: { user: { id: 'u1' } },
+      profile: null,
+      refreshProfile,
+    });
+    await render(<ProfileTab />);
+    expect(screen.getByText('No pudimos cargar tu perfil.')).toBeTruthy();
+    await fireEvent.press(screen.getByText('Reintentar'));
+    expect(refreshProfile).toHaveBeenCalledTimes(1);
+  });
 });
