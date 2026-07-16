@@ -27,7 +27,7 @@ export async function sendPhoneCode(phone: string) {
 
 export async function verifyPhoneCode(userId: string, phone: string, code: string) {
   const { verified } = await otpService.verifyCode(phone, code);
-  if (!verified) throw new Error('Código incorrecto');
+  if (!verified) throw new Error('invalid_code');
   const { error } = await supabase
     .from('profiles')
     .update({ phone, phone_verified: true })
