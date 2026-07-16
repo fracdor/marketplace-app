@@ -778,6 +778,8 @@ git commit -m "feat: wire verify-phone screen to mapAuthError, remove dev-code h
 
 ### Task 6: Edge Function wrappers (Deno, no test — see "Before you start")
 
+**CRITICAL CONTRACT — do not deviate:** these wrappers must always respond with HTTP 200 (never a non-2xx status), whether the result is a success OR a handled Twilio failure. The client (`TwilioOtpService`, Task 3, already merged) only reads the specific `OtpErrorCode` from the **response body** (`data.error`), because `supabase.functions.invoke()` does NOT parse a non-2xx response's body into `data` — it stashes it on `error.context` instead (confirmed by tracing `functions-js` source during Task 3's code-quality review) and `TwilioOtpService` falls back to a generic `throw new Error('unknown')` for any `error`. If a future edit "improves" this by returning e.g. `Response(..., {status: 400})` for `invalid_phone`, every specific error message silently degrades to "Algo salió mal" — a real, easy-to-introduce regression. The code below already returns a plain 200 via `new Response(JSON.stringify(result), {...})` with no `status` override (defaults to 200) — **keep it that way**, don't add status-code branching.
+
 **Files:**
 - Create: `supabase/functions/send-otp/index.ts`
 - Create: `supabase/functions/verify-otp/index.ts`
