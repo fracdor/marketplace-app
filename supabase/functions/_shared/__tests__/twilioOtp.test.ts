@@ -49,7 +49,7 @@ describe('startVerification', () => {
     const [url, options] = fetchImpl.mock.calls[0];
     expect(url).toBe('https://verify.twilio.com/v2/Services/VA_test/Verifications');
     expect(options.method).toBe('POST');
-    expect(options.body).toBe('To=3001234567&Channel=sms');
+    expect(options.body).toBe('To=%2B573001234567&Channel=sms');
     expect(options.headers.Authorization).toBe(`Basic ${btoa('AC_test:token_test')}`);
   });
 });
@@ -92,5 +92,15 @@ describe('checkVerification', () => {
       verified: false,
       error: 'unknown',
     });
+  });
+
+  it('sends the phone, code, and Basic auth to Twilio', async () => {
+    const fetchImpl = mockFetch(200, { status: 'approved' });
+    await checkVerification(fetchImpl, credentials, '3001234567', '123456');
+    const [url, options] = fetchImpl.mock.calls[0];
+    expect(url).toBe('https://verify.twilio.com/v2/Services/VA_test/VerificationChecks');
+    expect(options.method).toBe('POST');
+    expect(options.body).toBe('To=%2B573001234567&Code=123456');
+    expect(options.headers.Authorization).toBe(`Basic ${btoa('AC_test:token_test')}`);
   });
 });

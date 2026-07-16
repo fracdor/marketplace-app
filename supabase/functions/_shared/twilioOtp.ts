@@ -17,6 +17,10 @@ function basicAuthHeader(accountSid: string, authToken: string): string {
   return 'Basic ' + btoa(`${accountSid}:${authToken}`);
 }
 
+function toE164(phone: string): string {
+  return `+57${phone}`;
+}
+
 export async function startVerification(
   fetchImpl: FetchImpl,
   credentials: TwilioCredentials,
@@ -24,7 +28,7 @@ export async function startVerification(
 ): Promise<{ sent: true } | { sent: false; error: OtpErrorCode }> {
   const { accountSid, authToken, verifyServiceSid } = credentials;
   const url = `https://verify.twilio.com/v2/Services/${verifyServiceSid}/Verifications`;
-  const body = new URLSearchParams({ To: phone, Channel: 'sms' });
+  const body = new URLSearchParams({ To: toE164(phone), Channel: 'sms' });
   const response = await fetchImpl(url, {
     method: 'POST',
     headers: {
@@ -47,7 +51,7 @@ export async function checkVerification(
 ): Promise<{ verified: true } | { verified: false; error: OtpErrorCode }> {
   const { accountSid, authToken, verifyServiceSid } = credentials;
   const url = `https://verify.twilio.com/v2/Services/${verifyServiceSid}/VerificationChecks`;
-  const body = new URLSearchParams({ To: phone, Code: code });
+  const body = new URLSearchParams({ To: toE164(phone), Code: code });
   const response = await fetchImpl(url, {
     method: 'POST',
     headers: {
