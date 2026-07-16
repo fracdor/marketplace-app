@@ -61,4 +61,4 @@ Para el detalle de un archivo puntual, seguir usando Read/Grep — este mapa es 
 
 ## Estado actual / pendientes
 
-Docker Desktop está caído en esta máquina (socket `dockerInference` corrupto) — bloquea 2 ítems del roadmap: integración real de SMS/E2E y migrar tipos a `supabase gen types`. Ambos requieren Supabase local.
+Docker Desktop quedó sano el 2026-07-16 (se arregló con "Reset to factory defaults" tras semanas caído por un socket `dockerInference` corrupto). El stack local de Supabase (`backend-supabase-schema`) ya está corriendo. Pendiente: verificación en vivo de la integración SMS (Edge Functions `send-otp`/`verify-otp` + credenciales reales de Twilio) y migrar tipos a `supabase gen types`, ambos ahora desbloqueados.
