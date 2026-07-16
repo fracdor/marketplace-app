@@ -18,6 +18,9 @@ const RULES: ReadonlyArray<readonly [string, string]> = [
   // you can only request this after N seconds", "Request rate limit reached".
   ['rate limit', 'Demasiados intentos. Espera un momento e intenta de nuevo.'],
   ['you can only request this after', 'Demasiados intentos. Espera un momento e intenta de nuevo.'],
+  ['invalid_phone', 'Número de celular inválido.'],
+  ['rate_limited', 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.'],
+  ['invalid_code', 'Código incorrecto.'],
 ];
 
 export function mapAuthError(message: string): string {
