@@ -44,4 +44,18 @@ describe('mapAuthError', () => {
   it('falls back to generic for empty input', () => {
     expect(mapAuthError('')).toBe(GENERIC);
   });
+
+  it('maps invalid_phone', () => {
+    expect(mapAuthError('invalid_phone')).toBe('Número de celular inválido.');
+  });
+
+  it('maps rate_limited', () => {
+    expect(mapAuthError('rate_limited')).toBe(
+      'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.',
+    );
+  });
+
+  it('maps invalid_code', () => {
+    expect(mapAuthError('invalid_code')).toBe('Código incorrecto.');
+  });
 });

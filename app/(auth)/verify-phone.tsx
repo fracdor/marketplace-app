@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { PhoneForm } from '@/features/auth/PhoneForm';
 import { useAuth } from '@/features/auth/useAuth';
+import { mapAuthError } from '@/features/auth/errors';
 import { sendPhoneCode, verifyPhoneCode } from '@/features/auth/actions';
 
 export default function VerifyPhoneScreen() {
@@ -24,8 +25,7 @@ export default function VerifyPhoneScreen() {
           <PhoneForm onSubmit={async (p) => { await sendPhoneCode(p); setPhone(p); }} />
         ) : (
           <View>
-            {/* TODO(otp-provider): remove the dev code from this label once OtpService is SMS-backed */}
-            <Input label="Código (dev: 123456)" testID="code-input" keyboardType="number-pad"
+            <Input label="Código" testID="code-input" keyboardType="number-pad"
               value={code} onChangeText={setCode} error={error ?? undefined} />
             <Button label="Verificar" loading={loading} onPress={async () => {
               if (!session) return;
@@ -35,7 +35,7 @@ export default function VerifyPhoneScreen() {
                 await refreshProfile();
                 router.replace('/(auth)/onboarding');
               } catch (e) {
-                setError(e instanceof Error ? e.message : 'Error');
+                setError(e instanceof Error ? mapAuthError(e.message) : 'Error');
               } finally {
                 setLoading(false);
               }
