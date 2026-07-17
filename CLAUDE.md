@@ -2,7 +2,7 @@
 
 ## Resumen del proyecto
 
-Marketplace de servicios freelance en Colombia (MVP). Stack: Expo/React Native (SDK 57) + TypeScript + Expo Router, Supabase (Postgres + Auth + RLS) vía `@supabase/supabase-js` sin tipar, `@tanstack/react-query` v5 para data-fetching, react-hook-form + Zod para formularios, NativeWind (Tailwind para RN), Jest (`jest-expo`, pinned `^29`) + React Native Testing Library v14 para tests. Flujo de trabajo estándar del proyecto: **brainstorming → spec → plan → subagent-driven-development**, con TDD en toda tarea de código. Cada sub-proyecto termina con un review holístico del branch completo antes de mergear a `main`.
+Marketplace de servicios freelance en Colombia (MVP). Stack: Expo/React Native (SDK 57) + TypeScript + Expo Router, Supabase (Postgres + Auth + RLS) vía `@supabase/supabase-js` tipado con `createClient<Database>` (tipos generados en `lib/database.types.ts`, regenerar con `npm run gen:types`), `@tanstack/react-query` v5 para data-fetching, react-hook-form + Zod para formularios, NativeWind (Tailwind para RN), Jest (`jest-expo`, pinned `^29`) + React Native Testing Library v14 para tests. Flujo de trabajo estándar del proyecto: **brainstorming → spec → plan → subagent-driven-development**, con TDD en toda tarea de código. Cada sub-proyecto termina con un review holístico del branch completo antes de mergear a `main`.
 
 ## Mapa de directorios
 
@@ -40,6 +40,8 @@ Para el detalle de un archivo puntual, seguir usando Read/Grep — este mapa es 
 - Una fila embebida ocultada por RLS llega como `null`, no como un objeto inaccesible — tratar `null` como señal significativa, no solo "dato faltante".
 - `profiles_public` no se puede embeber directo desde `tasks` en PostgREST (sin FK propia); el info del cliente se trae con una query aparte, unida en el cliente.
 - Las políticas/triggers RLS son la defensa real (defense-in-depth) detrás de cualquier restricción de UI — verificar la policy/trigger, no solo que el botón esté oculto.
+- Columnas `text + CHECK` (ej. `tasks.status`, `offers.status`) generan como `string` en `database.types.ts`, no como unión literal — `Task`/`Offer` las angostan explícitamente (`Omit<Row,'status'> & {status: TaskStatus}`) para preservar los switches exhaustivos.
+- Las columnas de una vista (ej. `profiles_public.id`) siempre generan nullable en `database.types.ts`, aunque la tabla base tenga esa columna como `not null` — verificar la definición real de la vista antes de asumir que un `!` es seguro, no asumirlo por similitud con la tabla base.
 
 ### React Query
 - Patrón de factory `xKeys` (`all` / `lists()` / `list(filter)` / `detail(id)`) con invalidación por prefijo.
@@ -61,4 +63,4 @@ Para el detalle de un archivo puntual, seguir usando Read/Grep — este mapa es 
 
 ## Estado actual / pendientes
 
-Docker Desktop quedó sano el 2026-07-16 (se arregló con "Reset to factory defaults" tras semanas caído por un socket `dockerInference` corrupto). El stack local de Supabase (`backend-supabase-schema`) ya está corriendo. Pendiente: verificación en vivo de la integración SMS (Edge Functions `send-otp`/`verify-otp` + credenciales reales de Twilio) y migrar tipos a `supabase gen types`, ambos ahora desbloqueados.
+Docker Desktop quedó sano el 2026-07-16 (se arregló con "Reset to factory defaults" tras semanas caído por un socket `dockerInference` corrupto) — sigue algo inestable (se cerró solo un par de veces más ese mismo día, un relanzamiento simple lo resolvió cada vez). El roadmap original del MVP está completo: backend, frontend completo, integración real de SMS (Twilio Verify, verificada en vivo), cancelar tarea abierta, y migración a `supabase gen types`. Único pendiente real: un round-trip de SMS con credenciales reales de Twilio (el usuario debe crear esa cuenta, Claude no puede).
