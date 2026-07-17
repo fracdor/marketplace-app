@@ -1,3 +1,5 @@
+import type { Database } from '@/lib/database.types';
+
 export type TaskStatus = 'open' | 'assigned' | 'completed' | 'cancelled';
 
 export interface TaskCategory {
@@ -10,21 +12,11 @@ export interface TaskClient {
   avatar_url: string | null;
 }
 
-// The raw shape of a row in public.tasks.
-export interface Task {
-  id: string;
-  client_id: string;
-  category_id: number;
-  title: string;
-  description: string;
-  budget_reference: number | null;
-  city: string;
-  address_approx: string | null;
-  status: TaskStatus;
-  assigned_freelancer_id: string | null;
-  created_at: string;
-  updated_at: string;
-}
+// The raw shape of a row in public.tasks, with `status` narrowed from the
+// DB's raw `text` column to the literal union the app relies on for
+// exhaustive switches — the DB enforces the invariant via CHECK + the
+// enforce_task_status_transitions trigger, this just tells TypeScript.
+export type Task = Omit<Database['public']['Tables']['tasks']['Row'], 'status'> & { status: TaskStatus };
 
 // What api.ts/hooks.ts actually return: a Task plus its joined category and
 // client info. Every UI component in features/tasks and components/tasks
@@ -35,11 +27,7 @@ export interface TaskWithRelations extends Task {
 }
 
 // A row from public.categories, used by the post-task category picker.
-export interface CategoryRow {
-  id: number;
-  name: string;
-  slug: string;
-}
+export type CategoryRow = Database['public']['Tables']['categories']['Row'];
 
 // What PostTaskForm hands to createTask after validating/converting the raw
 // form strings. budget_reference/address_approx are null (not empty string)

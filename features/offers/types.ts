@@ -1,17 +1,12 @@
+import type { Database } from '@/lib/database.types';
 import type { TaskStatus } from '@/features/tasks/types';
 
 export type OfferStatus = 'pending' | 'accepted' | 'rejected' | 'withdrawn';
 
-// The raw shape of a row in public.offers.
-export interface Offer {
-  id: string;
-  task_id: string;
-  freelancer_id: string;
-  price: number;
-  message: string | null;
-  status: OfferStatus;
-  created_at: string;
-}
+// The raw shape of a row in public.offers, with `status` narrowed the same
+// way as Task's status field — see features/tasks/types.ts for the full
+// reasoning (CHECK constraint enforces the invariant at the DB level).
+export type Offer = Omit<Database['public']['Tables']['offers']['Row'], 'status'> & { status: OfferStatus };
 
 export interface OfferFreelancer {
   full_name: string | null;
