@@ -106,7 +106,13 @@ async function fetchFreelancerNames(freelancerIds: string[]): Promise<Map<string
   if (freelancerIds.length === 0) return new Map();
   const { data, error } = await supabase.from('profiles_public').select('id, full_name').in('id', freelancerIds);
   if (error) throw error;
-  return new Map((data ?? []).map((p) => [p.id, p.full_name]));
+  // profiles_public.id is generated as `string | null` because Supabase's
+  // type generator can't express that a view column is derived from a
+  // not-null primary key (profiles.id references auth.users(id)) — it's
+  // genuinely never null here. Narrowly asserted rather than loosening this
+  // function's return type, which would push the null-handling burden onto
+  // every caller (see fetchMyTasks's freelancerNames.get(...) usage below).
+  return new Map((data ?? []).map((p) => [p.id!, p.full_name]));
 }
 
 // client_id has no DB default — the caller supplies it, same reasoning as
