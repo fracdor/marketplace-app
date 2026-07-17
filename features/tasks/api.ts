@@ -65,7 +65,7 @@ export async function fetchTaskById(id: string): Promise<TaskWithRelations | nul
 }
 
 export async function fetchCategories(): Promise<CategoryRow[]> {
-  const { data, error } = await supabase.from('categories').select('id, name, slug').order('id');
+  const { data, error } = await supabase.from('categories').select('id, name, slug, icon').order('id');
   if (error) throw error;
   return data ?? [];
 }

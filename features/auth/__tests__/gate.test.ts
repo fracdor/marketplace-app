@@ -4,6 +4,7 @@ import type { Profile } from '@/features/auth/types';
 const complete: Profile = {
   id: 'u1', full_name: 'Ana', city: 'Bogotá', phone: '3001234567',
   phone_verified: true, avatar_url: null,
+  created_at: '2024-01-01T00:00:00Z', updated_at: '2024-01-01T00:00:00Z',
 };
 
 describe('needsOnboarding', () => {
