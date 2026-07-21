@@ -1,5 +1,9 @@
 .worktrees/
 .superpowers/
+# Docker Desktop can misfire its WSL disk-image-location setting to a
+# relative path that resolves against this repo's directory — defensive
+# ignore so a stray multi-GB VHDX can never be accidentally committed.
+DockerDesktopWSL/
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
 # dependencies
