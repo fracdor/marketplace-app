@@ -11,6 +11,11 @@ const config: ExpoConfig = {
   ios: { supportsTablet: false },
   android: {},
   experiments: { typedRoutes: true },
+  extra: {
+    eas: {
+      projectId: 'c4a7835d-8bba-402a-8f06-ee2cdd343f1c',
+    },
+  },
 };
 
 export default config;
