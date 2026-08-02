@@ -9,7 +9,9 @@ const config: ExpoConfig = {
   userInterfaceStyle: 'automatic',
   plugins: ['expo-router', 'expo-secure-store'],
   ios: { supportsTablet: false },
-  android: {},
+  android: {
+    package: 'com.fracdor.marketplace',
+  },
   experiments: { typedRoutes: true },
   extra: {
     eas: {
